@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 2,
+  "global": [
+    "declare_scope",
+    "separate_facts_from_inferences",
+    "report_validation_performed",
+    "save_significant_decisions"
+  ],
+  "code": [
+    "lint_when_available",
+    "typecheck_when_available",
+    "tests_when_available",
+    "sonarqube_when_available",
+    "no_build",
+    "no_commit_without_explicit_permission",
+    "no_push_without_explicit_permission"
+  ],
+  "architecture": [
+    "state_scope_constraints_and_tradeoffs",
+    "record_architecture_decisions",
+    "define_verifiable_acceptance_criteria",
+    "no_implementation_without_clear_scope"
+  ],
+  "documentation": [
+    "cite_repository_or_primary_evidence",
+    "preserve_exact_paths_and_numbers",
+    "label_unverified_or_drift_prone_claims",
+    "check_internal_links_when_applicable"
+  ],
+  "security": [
+    "run_gitleaks_before_commit",
+    "run_osv_scanner_on_dependency_change",
+    "sonarqube_security_gate_must_pass",
+    "no_suppression_without_documented_justification",
+    "zero_verified_secrets_in_code"
+  ],
+  "migration": [
+    "inventory_before_copy",
+    "copy_before_delete",
+    "compare_counts_sizes_and_hashes",
+    "preserve_source_for_30_days",
+    "require_user_approval_before_destructive_actions"
+  ]
+}

@@ -1,0 +1,30 @@
+# .security/policies/osint-allowlist.yaml
+# AUTORIZACIÓN EXPLÍCITA de targets para reconocimiento externo.
+# Sin este archivo, run-security-pipeline.ps1 rechaza las etapas 'staging' y 'nightly'.
+# REGLA: solo reconocimiento pasivo (Subfinder) y pruebas contra staging propio.
+# NUNCA incluir dominios de terceros sin autorización escrita del propietario.
+
+version: "1.0"
+
+# ── Target de staging para DAST (ZAP) ────────────────────────────────────────
+# Debe ser una URL propia corriendo localmente o en staging propio.
+# Ejemplo: http://localhost:3000
+staging_target: ""   # Completar antes de ejecutar: ai security staging
+
+# ── Dominios autorizados para reconocimiento OSINT (nightly) ─────────────────
+# Solo dominios que el equipo posee o tiene autorización escrita.
+# Ejemplo:
+# authorized_domains:
+#   - miempresa.com
+#   - api.miempresa.com
+authorized_domains: []
+
+# ── Registro de autorizaciones ────────────────────────────────────────────────
+# Documentar quién autorizó cada dominio y cuándo.
+authorizations: []
+# Ejemplo:
+# authorizations:
+#   - domain: miempresa.com
+#     authorized_by: "CTO — email 2026-07-01"
+#     scope: "reconocimiento pasivo de subdominios únicamente"
+#     expires: "2027-01-01"

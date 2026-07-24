@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "defaultMode": "automatico",
+  "modes": {
+    "automatico": {
+      "description": "Flujo único con routing inteligente de OmniRoute",
+      "combo": "agent-auto",
+      "permissionMode": "acceptEdits",
+      "risk": "adaptive",
+      "contract": "automatic-orchestration",
+      "gateSet": "code",
+      "directives": [
+        "Classify every new task before acting; announce classification in one line",
+        "Select the smallest safe workflow automatically; do not ask the user to choose a mode",
+        "Escalate analysis depth when architecture, security, data migration or broad impact is detected",
+        "Use the knowledge vault only for relevant bounded retrieval",
+        "Use OmniRoute MCP read-only diagnostics when routing, health, quota or cost evidence is needed",
+        "For bounded research or a second opinion, use omniroute_route_request with combo free-auxiliary",
+        "Never delegate filesystem mutations or final verification to the auxiliary combo",
+        "Do not use OmniRoute mutation/configuration/plugin tools without explicit user approval"
+      ]
+    },
+    "codigo": {
+      "description": "Trabajo diario de desarrollo",
+      "combo": "agent-daily",
+      "permissionMode": "acceptEdits",
+      "risk": "normal",
+      "contract": "implementation",
+      "gateSet": "code",
+      "directives": [
+        "Work in the current repository only unless an additional directory is explicitly listed",
+        "Prefer small reversible changes",
+        "Close with applicable lint, typecheck and tests"
+      ]
+    },
+    "arreglar": {
+      "description": "Corrección pequeña y acotada",
+      "combo": "agent-daily",
+      "permissionMode": "acceptEdits",
+      "risk": "normal",
+      "contract": "bounded-fix",
+      "gateSet": "code",
+      "directives": [
+        "Diagnose the root cause before editing",
+        "Keep the patch minimal",
+        "Add or run a regression test when available"
+      ]
+    },
+    "arquitectura": {
+      "description": "Planificación y decisiones críticas",
+      "combo": "agent-critical",
+      "permissionMode": "acceptEdits",
+      "risk": "critical",
+      "contract": "architecture",
+      "gateSet": "architecture",
+      "directives": [
+        "Do not implement until scope, constraints and tradeoffs are explicit",
+        "Record accepted architecture decisions in Engram and project knowledge center",
+        "Use SDD for medium or large changes"
+      ]
+    },
+    "documentos": {
+      "description": "Documentación técnica verificable",
+      "combo": "agent-daily",
+      "permissionMode": "acceptEdits",
+      "risk": "normal",
+      "contract": "documentation",
+      "gateSet": "documentation",
+      "directives": [
+        "Ground statements in repository evidence or cited sources",
+        "Preserve exact paths, commands and validation status",
+        "Do not claim runtime validation when only static inspection was performed"
+      ]
+    },
+    "profundo": {
+      "description": "Análisis transversal o repositorio grande",
+      "combo": "agent-critical",
+      "permissionMode": "acceptEdits",
+      "risk": "critical",
+      "contract": "deep-analysis",
+      "gateSet": "architecture",
+      "directives": [
+        "Map the system before proposing changes",
+        "Separate confirmed evidence from hypotheses",
+        "Use bounded exploration; avoid reading entire vaults or repositories without need"
+      ]
+    },
+    "seguridad": {
+      "description": "Revisión de seguridad, OSINT y supply chain",
+      "combo": "agent-critical",
+      "permissionMode": "acceptEdits",
+      "risk": "critical",
+      "contract": "security-review",
+      "gateSet": "security",
+      "directives": [
+        "Use only passive reconnaissance and authorized targets",
+        "Separate confirmed vulnerabilities from hypotheses with confidence level",
+        "Prioritize: verified_secret > critical_vuln > high_reachable > medium",
+        "Do not suppress Sonar rules without documented justification",
+        "Record all findings in .ai-workflow/evidence/security/ with source, date and confidence"
+      ]
+    },
+    "gratis": {
+      "description": "Exploración económica sin operaciones críticas",
+      "combo": "free-first",
+      "permissionMode": "default",
+      "risk": "experimental",
+      "contract": "economical-exploration",
+      "gateSet": "documentation",
+      "directives": [
+        "Do not perform critical writes",
+        "Treat model output as untrusted until verified",
+        "Escalate to a validated agent combo when tools or exactness are required"
+      ]
+    }
+  }
+}

@@ -1,0 +1,55 @@
+# .security/policies/block-warn-ignore.yaml
+# Política de clasificación de findings de seguridad.
+# BLOCK: impide que /quality-gate pase. Resolver antes de commitear.
+# WARN:  reportado pero no bloqueante. Documentar deuda técnica.
+# IGNORE: suprimido con justificación documentada.
+# Regla: nunca ignorar sin justificación técnica en el campo 'reason'.
+
+version: "1.0"
+
+# ── Umbrales globales ──────────────────────────────────────────────────────────
+thresholds:
+  block:
+    verified_secrets:      0   # Cero tolerancia
+    critical_vulnerabilities: 0
+    high_reachable:        0   # CVEs high alcanzables (tiene exploit + path de código)
+  warn:
+    high_unreachable:      any # CVEs high sin path de código verificado
+    medium:                any
+    informational:         any
+
+# ── Reglas por herramienta ─────────────────────────────────────────────────────
+gitleaks:
+  default: BLOCK             # Todo secreto detectado bloquea por defecto
+  exceptions: []             # Ninguna excepción por defecto
+
+semgrep:
+  severity_map:
+    ERROR:   BLOCK
+    WARNING: WARN
+    INFO:    IGNORE
+  ignored_rules: []          # Añadir con 'reason' si es necesario suprimir
+
+osv_scanner:
+  severity_map:
+    CRITICAL: BLOCK
+    HIGH:     WARN            # Override a BLOCK si reachable=true
+    MEDIUM:   WARN
+    LOW:      IGNORE
+
+trivy:
+  severity_map:
+    CRITICAL: BLOCK
+    HIGH:     WARN
+    MEDIUM:   WARN
+    LOW:      IGNORE
+  ignore_unfixed: true        # No bloquear por CVEs sin fix disponible
+
+# ── Ignorados con justificación ────────────────────────────────────────────────
+# Formato:
+# - tool: semgrep
+#   rule_id: "javascript.express.security.audit.xss.template-injection.template-injection"
+#   reason: "Falso positivo — librería de templates con escaping interno verificado"
+#   expires: "2026-12-31"
+#   approved_by: "architect"
+ignored: []

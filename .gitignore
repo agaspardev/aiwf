@@ -1,0 +1,28 @@
+# ─── Secrets & local config ───
+*.local.json
+.env
+.env.*
+!.env.example
+
+# ─── Build artifacts ───
+/aiwf
+/aiwf.exe
+/dist/
+*.out
+*.test
+*.test.exe
+
+# ─── IDE ───
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ─── OS ───
+.DS_Store
+Thumbs.db
+
+# ─── Dependencies (non-Go) ───
+node_modules/
+__pycache__/

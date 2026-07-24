@@ -1,0 +1,237 @@
+// Command aiwf es el instalador y CLI cross-platform del entorno de ingeniería
+// asistida por IA. Es una customización declarada de gentle-ai (ver README).
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"runtime"
+
+	"github.com/agaspardev/aiwf/internal/assets"
+	"github.com/agaspardev/aiwf/internal/bootstrap"
+	"github.com/agaspardev/aiwf/internal/config"
+	"github.com/agaspardev/aiwf/internal/overlay"
+	"github.com/agaspardev/aiwf/internal/upstream"
+)
+
+func main() {
+	if len(os.Args) < 2 {
+		usage()
+		os.Exit(2)
+	}
+	switch os.Args[1] {
+	case "doctor":
+		os.Exit(doctor())
+	case "install":
+		os.Exit(install())
+	case "reconcile":
+		os.Exit(reconcile())
+	case "uninstall":
+		os.Exit(uninstall())
+	case "init":
+		os.Exit(initCmd(os.Args[2:]))
+	case "estado":
+		os.Exit(estado())
+	case "diagnostico":
+		os.Exit(diagnostico())
+	case "document", "documentar":
+		os.Exit(documentCmd(os.Args[2:]))
+	case "gate":
+		os.Exit(gateCmd(os.Args[2:]))
+	case "skills":
+		os.Exit(skillsCmd(os.Args[2:]))
+	case "gemini":
+		os.Exit(geminiCmd(os.Args[2:]))
+	case "security":
+		os.Exit(securityCmd(os.Args[2:]))
+	case "sonar":
+		os.Exit(sonarCmd(os.Args[2:]))
+	case "prueba":
+		// smoke test: modo por defecto en dry-run.
+		os.Exit(runMode("", true, false))
+	case "-h", "--help", "help", "ayuda":
+		usage()
+	default:
+		// Cualquier otro token se interpreta como un modo de trabajo (como `ai <modo>`).
+		dryRun, skipPerms := parseRunFlags(os.Args[2:])
+		os.Exit(runMode(os.Args[1], dryRun, skipPerms))
+	}
+}
+
+// parseRunFlags extrae banderas del lanzamiento de un modo.
+func parseRunFlags(args []string) (dryRun, skipPerms bool) {
+	for _, a := range args {
+		switch a {
+		case "--dry-run", "--dryrun":
+			dryRun = true
+		case "--skip-perms", "--skip-permisos":
+			skipPerms = true
+		}
+	}
+	return
+}
+
+func usage() {
+	fmt.Print(`aiwf — instalador y entorno de ingeniería asistida por IA
+
+Instalación:
+  aiwf doctor      Verifica prerequisitos y entorno
+  aiwf install     Instala gentle-ai (base) + la capa de aiwf
+  aiwf reconcile   Re-aplica la capa de aiwf tras updates de gentle-ai
+  aiwf uninstall   Revierte solo lo instalado por aiwf
+
+Sesiones (modos de trabajo):
+  aiwf                 Abre una sesión en el modo por defecto
+  aiwf <modo>          Abre una sesión en el modo indicado
+                       (automatico, codigo, arreglar, arquitectura,
+                        documentos, profundo, seguridad, gratis)
+  aiwf <modo> --dry-run     Muestra los argumentos y el contract sin lanzar
+  aiwf <modo> --skip-perms  Usa --dangerously-skip-permissions
+  aiwf prueba          Smoke test del harness (dry-run del modo por defecto)
+
+Herramientas:
+  aiwf init [--name N] [--force]   Inicializa .ai-workflow/ en el proyecto actual
+  aiwf estado          Estado del workflow del proyecto actual
+  aiwf diagnostico     Verifica el toolchain operativo (claude, omniroute, ...)
+  aiwf document [full|update] [-s]  Documenta el proyecto (determinista, cero tokens)
+  aiwf gate <c.json>   Valida un phase-contract contra el repo (determinista)
+  aiwf skills [--lint] Genera el registry de skills / detecta drift
+  aiwf gemini "..."    Consulta al modelo auxiliar (Gemini) vía OmniRoute
+  aiwf security [scope] Pipeline AppSec: secrets|sast|sca|sbom|all (default all)
+  aiwf sonar [modo]    SonarQube: gate|issues|changed|full (default gate)
+`)
+}
+
+// doctor verifica el entorno y devuelve un exit code (0 = OK, 1 = faltan prereqs).
+func doctor() int {
+	cfg := config.LoadOrDefault(config.ConfigFilePath())
+	fmt.Println("aiwf doctor")
+	fmt.Printf("  SO/arch:          %s/%s\n", runtime.GOOS, runtime.GOARCH)
+	fmt.Printf("  gestor paquetes:  %s\n", pmDisplay(bootstrap.DetectPackageManager()))
+	fmt.Printf("  gentle-ai target: %s\n", cfg.GentleAIVersion)
+	fmt.Println("  prerequisitos:")
+
+	prereqs := bootstrap.CheckPrereqs()
+	for _, p := range prereqs {
+		mark := "OK   "
+		if !p.Present {
+			mark = "FALTA"
+		}
+		fmt.Printf("    [%s] %s\n", mark, p.Name)
+	}
+
+	// Estado de gentle-ai y decisión de idempotencia contra el pin.
+	target, _ := upstream.ParseVersion(cfg.GentleAIVersion)
+	st, err := upstream.Detect(context.Background())
+	fmt.Println("  gentle-ai:")
+	switch {
+	case err != nil:
+		fmt.Printf("    instalado pero versión ilegible: %v\n", err)
+	case !st.Installed:
+		fmt.Println("    no instalado")
+	default:
+		fmt.Printf("    instalado %s (%s)\n", st.Version, st.Path)
+	}
+	action := upstream.Decide(st.Installed, st.Version, target)
+	fmt.Printf("    acción vs pin %s: %s\n", target, action)
+
+	if missing := bootstrap.Missing(prereqs); len(missing) > 0 {
+		fmt.Printf("\n  Faltan %d prerequisito(s). Instalalos antes de continuar.\n", len(missing))
+		return 1
+	}
+	fmt.Println("\n  Entorno OK.")
+	return 0
+}
+
+// install ejecuta la matriz de idempotencia sobre gentle-ai. El overlay propio
+// (tasks 0.5-0.7) se encadenará aquí una vez implementado.
+func install() int {
+	cfg := config.LoadOrDefault(config.ConfigFilePath())
+	target, _ := upstream.ParseVersion(cfg.GentleAIVersion)
+
+	fmt.Println("aiwf install")
+	fmt.Println("  paso 1: asegurar gentle-ai (base)")
+	action, err := upstream.Ensure(context.Background(), target)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "    error asegurando gentle-ai: %v\n", err)
+		return 1
+	}
+	switch action {
+	case upstream.Skip:
+		fmt.Println("    gentle-ai ya presente y actualizado (skip)")
+	case upstream.Install:
+		fmt.Println("    gentle-ai instalado")
+	case upstream.Update:
+		fmt.Println("    gentle-ai actualizado")
+	}
+
+	fmt.Println("  paso 2: aplicar capa aiwf (overlay)")
+	if err := applyOverlay(); err != nil {
+		fmt.Fprintf(os.Stderr, "    error aplicando overlay: %v\n", err)
+		return 1
+	}
+	fmt.Println("    capa aiwf aplicada")
+	return 0
+}
+
+// applyOverlay construye el overlay desde los assets embebidos y lo aplica sobre la
+// raíz de instalación.
+func applyOverlay() error {
+	root, err := config.InstallRoot()
+	if err != nil {
+		return err
+	}
+	mp, err := config.ManifestPath()
+	if err != nil {
+		return err
+	}
+	entries, err := assets.BuildEntries()
+	if err != nil {
+		return err
+	}
+	return overlay.New(root, mp, entries).Apply()
+}
+
+// reconcile re-aplica la capa aiwf tras un update de gentle-ai (idempotente).
+func reconcile() int {
+	fmt.Println("aiwf reconcile")
+	if err := applyOverlay(); err != nil {
+		fmt.Fprintf(os.Stderr, "  error: %v\n", err)
+		return 1
+	}
+	fmt.Println("  capa aiwf reconciliada")
+	return 0
+}
+
+// uninstall revierte solo lo aplicado por aiwf, sin tocar gentle-ai.
+func uninstall() int {
+	fmt.Println("aiwf uninstall")
+	root, err := config.InstallRoot()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "  error: %v\n", err)
+		return 1
+	}
+	mp, err := config.ManifestPath()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "  error: %v\n", err)
+		return 1
+	}
+	skipped, err := overlay.Uninstall(root, mp)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "  error: %v\n", err)
+		return 1
+	}
+	fmt.Println("  capa aiwf removida (gentle-ai intacto)")
+	for _, p := range skipped {
+		fmt.Printf("  nota: %s (JSON) no se des-fusionó automáticamente; revisá manualmente\n", p)
+	}
+	return 0
+}
+
+func pmDisplay(pm bootstrap.PackageManager) string {
+	if pm == bootstrap.Unknown {
+		return "(no detectado)"
+	}
+	return string(pm)
+}

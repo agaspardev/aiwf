@@ -1,0 +1,18 @@
+# Normalización de fin de línea para un proyecto cross-platform.
+* text=auto eol=lf
+
+*.go   text eol=lf
+*.md   text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.sh   text eol=lf
+*.py   text eol=lf
+
+# PowerShell se maneja mejor con CRLF en Windows.
+*.ps1  text eol=crlf
+
+# Binarios (sin conversión).
+*.png binary
+*.jpg binary
+*.ico binary
