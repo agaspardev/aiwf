@@ -17,10 +17,56 @@ func omnirouteCmd(args []string) int {
 	switch action {
 	case "ensure":
 		return omnirouteEnsure()
+	case "configure":
+		return omnirouteConfigure(args[1:])
 	default:
-		fmt.Fprintf(os.Stderr, "aiwf omniroute: subcomando desconocido %q (usá: ensure)\n", action)
+		fmt.Fprintf(os.Stderr, "aiwf omniroute: subcomando desconocido %q (usá: ensure | configure)\n", action)
 		return 2
 	}
+}
+
+// omnirouteConfigure reporta el estado de configuración de omniroute y los pasos
+// faltantes (read-only). Con --doctor, delega en `omniroute doctor`.
+func omnirouteConfigure(args []string) int {
+	ctx := context.Background()
+	fmt.Println("aiwf omniroute configure")
+	st := omniroute.CheckStatus(ctx)
+	fmt.Printf("  server: %s | api key: %s\n", upDown(st.ServerUp), presentAbsent(st.KeyPresent))
+	for _, step := range omniroute.Guidance(st) {
+		fmt.Printf("  - %s\n", step)
+	}
+
+	if hasFlag(args, "--doctor") {
+		fmt.Println("  omniroute doctor:")
+		if err := omniroute.RunDoctor(ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "  error corriendo omniroute doctor: %v\n", err)
+			return 1
+		}
+	}
+	return 0
+}
+
+func upDown(up bool) string {
+	if up {
+		return "arriba"
+	}
+	return "abajo"
+}
+
+func presentAbsent(p bool) string {
+	if p {
+		return "presente"
+	}
+	return "ausente"
+}
+
+func hasFlag(args []string, flag string) bool {
+	for _, a := range args {
+		if a == flag {
+			return true
+		}
+	}
+	return false
 }
 
 // omnirouteEnsure ejecuta la matriz de instalación y reporta la acción tomada.
