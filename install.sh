@@ -36,8 +36,10 @@ if [ -z "$VERSION" ]; then
 fi
 echo "📦 Versión: $VERSION"
 
-# Download archive
-ARCHIVE="aiwf_${VERSION}_${OS}_${ARCH}.tar.gz"
+# Download archive. El tag es "vX.Y.Z" pero GoReleaser nombra los archivos SIN la "v"
+# ({{ .Version }}), así que hay que quitar el prefijo para armar el nombre correcto.
+VERSION_NUM="${VERSION#v}"
+ARCHIVE="aiwf_${VERSION_NUM}_${OS}_${ARCH}.tar.gz"
 URL="https://github.com/$REPO/releases/download/$VERSION/$ARCHIVE"
 echo "⬇️ Descargando $URL..."
 curl -sSfL -o "/tmp/$ARCHIVE" "$URL"

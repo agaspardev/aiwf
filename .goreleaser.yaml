@@ -50,3 +50,8 @@ release:
   github:
     owner: agaspardev
     name: aiwf
+  # Publicar los instaladores como assets del release: el one-liner documentado
+  # (releases/latest/download/install.sh|.ps1) los descarga desde acá.
+  extra_files:
+    - glob: install.sh
+    - glob: install.ps1
