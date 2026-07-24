@@ -6,6 +6,16 @@
 
 **aiwf** is an AI coding agent installer and workflow orchestrator. Built on top of [Gentle-AI](https://github.com/Gentleman-Programming/gentle-ai), it provisions AI coding agents with Spec-Driven Development (SDD), persistent memory, curated skills, security pipelines, and SonarQube integration.
 
+### Instalar en 1 comando
+
+```bash
+# Linux / macOS
+curl -sfL https://raw.githubusercontent.com/agaspardev/aiwf/main/install.sh | sh
+
+# Windows (PowerShell)
+iwr -useb https://raw.githubusercontent.com/agaspardev/aiwf/main/install.ps1 | iex
+```
+
 ## Features
 
 | Capability | Description |
@@ -21,8 +31,10 @@
 
 ## Quick start
 
+**Primero, instala el binario** (elige el método de tu SO en la sección Installation).
+
 ```bash
-# Install (requires gentle-ai)
+# Install gentle-ai + aiwf overlay
 aiwf install
 
 # Check your setup
@@ -42,12 +54,65 @@ aiwf production   # Production mode
 
 ## Installation
 
-### From source
+Choose your OS:
 
+### Linux
+
+**Opción 1 — Install script (recomendada):**
+```bash
+curl -sfL https://raw.githubusercontent.com/agaspardev/aiwf/main/install.sh | sh
+```
+
+**Opción 2 — Con Go:**
+```bash
+go install github.com/agaspardev/aiwf/cmd/aiwf@latest
+```
+
+**Opción 3 — Manual:**
 ```bash
 git clone https://github.com/agaspardev/aiwf.git
 cd aiwf
 go build -o aiwf ./cmd/aiwf
+sudo mv aiwf /usr/local/bin/
+```
+
+### macOS
+
+**Opción 1 — Install script (recomendada):**
+```bash
+curl -sfL https://raw.githubusercontent.com/agaspardev/aiwf/main/install.sh | sh
+```
+
+**Opción 2 — Con Go (requiere Go instalado):**
+```bash
+go install github.com/agaspardev/aiwf/cmd/aiwf@latest
+```
+
+**Opción 3 — Manual:**
+```bash
+git clone https://github.com/agaspardev/aiwf.git
+cd aiwf
+go build -o aiwf ./cmd/aiwf
+sudo mv aiwf /usr/local/bin/
+```
+
+### Windows
+
+**Opción 1 — Install script (recomendada, PowerShell):**
+```powershell
+iwr -useb https://raw.githubusercontent.com/agaspardev/aiwf/main/install.ps1 | iex
+```
+
+**Opción 2 — Con Go (requiere Go instalado):**
+```powershell
+go install github.com/agaspardev/aiwf/cmd/aiwf@latest
+```
+
+**Opción 3 — Manual (PowerShell):**
+```powershell
+git clone https://github.com/agaspardev/aiwf.git
+cd aiwf
+go build -o aiwf.exe ./cmd/aiwf
 ```
 
 ### Post-install
