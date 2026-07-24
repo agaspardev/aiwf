@@ -43,6 +43,8 @@ func main() {
 		os.Exit(skillsCmd(os.Args[2:]))
 	case "gemini":
 		os.Exit(geminiCmd(os.Args[2:]))
+	case "omniroute":
+		os.Exit(omnirouteCmd(os.Args[2:]))
 	case "security":
 		os.Exit(securityCmd(os.Args[2:]))
 	case "sonar":
@@ -165,6 +167,9 @@ func install() int {
 	case upstream.Update:
 		fmt.Println("    gentle-ai actualizado")
 	}
+
+	fmt.Println("  paso 1b: asegurar omniroute (complementario)")
+	ensureOmniroute()
 
 	fmt.Println("  paso 2: aplicar capa aiwf (overlay)")
 	if err := applyOverlay(); err != nil {

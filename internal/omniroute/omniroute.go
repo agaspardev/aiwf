@@ -1,5 +1,6 @@
 // Package omniroute habla con el proxy local de OmniRoute (API Anthropic-compatible):
-// lectura de la API key y consultas de solo texto (usado por `aiwf gemini`).
+// lectura de la API key y consultas de solo texto (usado por `aiwf gemini`), y provee
+// el ciclo de vida de instalación (Detect/Decide/InstallCommand/Ensure — ver install.go).
 package omniroute
 
 import (
