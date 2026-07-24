@@ -71,7 +71,18 @@ func (o *Overlay) Apply() error {
 			AppliedAt: time.Now().UTC(),
 		}
 		if e.Type == JSONMerge {
-			r.AddedKeys = computeAddedKeys(existingBefore, e.Payload)
+			r.OverlayPayload = e.Payload
+			// CONGELAR la base: si ya hay un registro previo para esta ruta, el archivo
+			// en disco ya contiene lo de aiwf (estamos en un reconcile), así que NO es
+			// una base limpia. Preservamos el snapshot y AddedKeys del primer Apply.
+			// Sin esto, reconcile colapsaría AddedKeys a [] y el uninstall no revertiría.
+			if prev, ok := m.Find(e.Path); ok && prev.Type == JSONMerge {
+				r.BaseSnapshot = prev.BaseSnapshot
+				r.AddedKeys = prev.AddedKeys
+			} else {
+				r.BaseSnapshot = existingBefore
+				r.AddedKeys = computeAddedKeys(existingBefore, e.Payload)
+			}
 		}
 		m.Upsert(r)
 	}

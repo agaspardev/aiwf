@@ -16,9 +16,17 @@ type Record struct {
 	Checksum  string    `json:"checksum"` // sha256 del payload aplicado
 	AppliedAt time.Time `json:"applied_at"`
 	// AddedKeys lista las top-level keys JSON que aiwf inyectó (JSONMerge).
-	// Vacío para Owned/MarkerBlock o si no había keys nuevas. Uninstall usa esto
-	// para des-fusionar limpio sin datos de base previa.
+	// Vacío para Owned/MarkerBlock o si no había keys nuevas. Compatibilidad con
+	// manifiestos previos; el uninstall preciso usa BaseSnapshot+OverlayPayload.
 	AddedKeys []string `json:"added_keys,omitempty"`
+	// BaseSnapshot es el contenido del archivo JSON ANTES de que aiwf lo tocara por
+	// primera vez (JSONMerge). Se CONGELA en el primer Apply y se preserva en cada
+	// reconcile — nunca se re-captura sobre un archivo ya modificado por aiwf.
+	// Permite revertir con precisión (restaurar arrays y escalares a su valor base).
+	BaseSnapshot []byte `json:"base_snapshot,omitempty"`
+	// OverlayPayload es el fragmento JSON que aiwf fusionó (JSONMerge). Junto a
+	// BaseSnapshot permite calcular exactamente qué agregó aiwf para des-fusionar.
+	OverlayPayload []byte `json:"overlay_payload,omitempty"`
 }
 
 // Manifest registra todo lo que aiwf aplicó, para detectar drift, reconciliar y
@@ -50,6 +58,16 @@ func LoadManifest(path string) (*Manifest, error) {
 	}
 	m.path = path
 	return m, nil
+}
+
+// Find devuelve el registro de una ruta y si existía.
+func (m *Manifest) Find(path string) (Record, bool) {
+	for i := range m.Records {
+		if m.Records[i].Path == path {
+			return m.Records[i], true
+		}
+	}
+	return Record{}, false
 }
 
 // Upsert inserta o reemplaza el registro de una ruta.
