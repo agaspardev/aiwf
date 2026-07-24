@@ -122,10 +122,10 @@ func TestJSONMergeRastreaAddedKeys(t *testing.T) {
 
 func TestComputeAddedKeys(t *testing.T) {
 	tests := []struct {
-		name     string
-		base     string
-		overlay  string
-		want     []string
+		name    string
+		base    string
+		overlay string
+		want    []string
 	}{
 		{"nueva key", `{"a":1}`, `{"b":2}`, []string{"b"}},
 		{"key existente", `{"a":1}`, `{"a":2}`, nil},

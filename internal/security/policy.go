@@ -13,13 +13,13 @@ import (
 // Policy es la config de clasificación para el pipeline de seguridad.
 // Se carga de block-warn-ignore.yaml (embebido en assets).
 type Policy struct {
-	Version    string              `yaml:"version"`
-	Thresholds Thresholds          `yaml:"thresholds"`
-	Gitleaks   ToolPolicy          `yaml:"gitleaks"`
-	Semgrep    SemgrepPolicy       `yaml:"semgrep"`
-	OSVScanner ToolSeverityPolicy  `yaml:"osv_scanner"`
-	Trivy      TrivyPolicy         `yaml:"trivy"`
-	Ignored    []IgnoredRule       `yaml:"ignored"`
+	Version    string             `yaml:"version"`
+	Thresholds Thresholds         `yaml:"thresholds"`
+	Gitleaks   ToolPolicy         `yaml:"gitleaks"`
+	Semgrep    SemgrepPolicy      `yaml:"semgrep"`
+	OSVScanner ToolSeverityPolicy `yaml:"osv_scanner"`
+	Trivy      TrivyPolicy        `yaml:"trivy"`
+	Ignored    []IgnoredRule      `yaml:"ignored"`
 }
 
 type Thresholds struct {
@@ -28,9 +28,9 @@ type Thresholds struct {
 }
 
 type BlockThresholds struct {
-	VerifiedSecrets      int `yaml:"verified_secrets"`
-	CriticalVulns        int `yaml:"critical_vulnerabilities"`
-	HighReachable        int `yaml:"high_reachable"`
+	VerifiedSecrets int `yaml:"verified_secrets"`
+	CriticalVulns   int `yaml:"critical_vulnerabilities"`
+	HighReachable   int `yaml:"high_reachable"`
 }
 
 type WarnThresholds struct {

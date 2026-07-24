@@ -26,9 +26,9 @@ type ghAdvisory struct {
 
 // ghVuln describe el paquete afectado y las versiones.
 type ghVuln struct {
-	Package             ghPkg  `json:"package"`
+	Package                ghPkg  `json:"package"`
 	VulnerableVersionRange string `json:"vulnerable_version_range"`
-	PatchedVersions     string `json:"patched_versions"`
+	PatchedVersions        string `json:"patched_versions"`
 }
 
 type ghPkg struct {
