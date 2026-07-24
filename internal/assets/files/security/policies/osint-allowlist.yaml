@@ -9,7 +9,7 @@ version: "1.0"
 # ── Target de staging para DAST (ZAP) ────────────────────────────────────────
 # Debe ser una URL propia corriendo localmente o en staging propio.
 # Ejemplo: http://localhost:3000
-staging_target: ""   # Completar antes de ejecutar: ai security staging
+staging_target: ""   # Complete before running: aiwf security staging
 
 # ── Dominios autorizados para reconocimiento OSINT (nightly) ─────────────────
 # Solo dominios que el equipo posee o tiene autorización escrita.

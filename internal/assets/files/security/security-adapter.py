@@ -249,7 +249,7 @@ def handle_tools_call(req_id: Any, params: dict) -> dict:
                     REPORTS_DIR.glob("scan-summary-*.md"), reverse=True
                 ) if REPORTS_DIR.exists() else []
                 if not summaries:
-                    text = "No hay scan summaries disponibles. Ejecutar: ai security all"
+                    text = "No scan summaries available. Run: aiwf security all"
                     return _ok_result(req_id, text)
                 target = summaries[0]
 

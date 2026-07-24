@@ -31,7 +31,7 @@ Actualizar los archivos relevantes al final de cada sesión con descubrimientos 
 ## Comandos útiles en este proyecto
 
 ```bash
-ai sonar changed    # Análisis SonarQube de archivos modificados
-ai security sast    # Scan SAST rápido
-ai estado           # Estado del workflow
+aiwf sonar changed    # SonarQube analysis of modified files
+aiwf security sast    # Quick SAST scan
+aiwf estado           # Workflow status
 ```

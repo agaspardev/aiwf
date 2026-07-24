@@ -33,11 +33,9 @@ func Scan(skillsDir string) ([]Entry, error) {
 		}
 		return nil
 	})
-	// aiwf/*.md y rules/*.md.
-	for _, sub := range []string{"aiwf", "rules"} {
-		matches, _ := filepath.Glob(filepath.Join(skillsDir, sub, "*.md"))
-		paths = append(paths, matches...)
-	}
+	// rules/*.md (legacy flat format, kept for rule modules).
+	matches, _ := filepath.Glob(filepath.Join(skillsDir, "rules", "*.md"))
+	paths = append(paths, matches...)
 
 	var entries []Entry
 	for _, p := range paths {
@@ -114,6 +112,81 @@ func firstNonEmpty(vals ...string) string {
 		}
 	}
 	return ""
+}
+
+// maxDescriptionLines is the hard budget for skill descriptions.
+// Only eagerly loaded content; keep it short.
+const maxDescriptionLines = 2
+
+// PackagingError describes a single validation failure in a skill package.
+type PackagingError struct {
+	Path    string // relative to skills dir
+	Problem string
+}
+
+func (e PackagingError) Error() string {
+	return fmt.Sprintf("%s: %s", e.Path, e.Problem)
+}
+
+// ValidatePackaging checks that every SKILL.md under skillsDir follows the
+// packaging contract:
+//   - lives inside its own directory (aiwf-<name>/SKILL.md)
+//   - has frontmatter with "name" matching the directory name
+//   - has a "description" that is non-empty and at most maxDescriptionLines
+//
+// Legacy flat files (aiwf/*.md, rules/*.md) are skipped — they are not part
+// of the new packaging contract and will be removed by the migration task.
+func ValidatePackaging(skillsDir string) []PackagingError {
+	var errs []PackagingError
+
+	_ = filepath.WalkDir(skillsDir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() || d.Name() != "SKILL.md" {
+			return nil
+		}
+		data, readErr := os.ReadFile(p)
+		if readErr != nil {
+			errs = append(errs, PackagingError{Path: p, Problem: "cannot read file"})
+			return nil
+		}
+
+		rel, _ := filepath.Rel(skillsDir, p)
+		relSlash := filepath.ToSlash(rel)
+		dirName := filepath.Base(filepath.Dir(p))
+		fm := parseFrontmatter(string(data))
+
+		// name must exist
+		name := fm["name"]
+		if name == "" {
+			errs = append(errs, PackagingError{Path: relSlash, Problem: "missing frontmatter 'name'"})
+		} else if name != dirName {
+			errs = append(errs, PackagingError{
+				Path:    relSlash,
+				Problem: fmt.Sprintf("name %q does not match directory %q", name, dirName),
+			})
+		}
+
+		// description must exist and respect budget
+		desc := fm["description"]
+		if desc == "" {
+			errs = append(errs, PackagingError{Path: relSlash, Problem: "missing frontmatter 'description'"})
+		} else {
+			lines := strings.Split(strings.TrimSpace(desc), "\n")
+			if len(lines) > maxDescriptionLines {
+				errs = append(errs, PackagingError{
+					Path: relSlash,
+					Problem: fmt.Sprintf("description has %d lines, max %d",
+						len(lines), maxDescriptionLines),
+				})
+			}
+		}
+
+		return nil
+	})
+
+	return errs
 }
 
 // Lint detecta drift: skills sin trigger y nombres duplicados.

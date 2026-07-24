@@ -92,3 +92,32 @@ func (m *Manifest) Save() error {
 	}
 	return os.WriteFile(m.path, data, 0o644)
 }
+
+// PruneOwned removes manifest records for Owned files that are not in the
+// desired set. It returns the list of pruned paths (for the caller to delete
+// the files on disk). Only Owned entries are eligible — MarkerBlock and
+// JSONMerge are never pruned because they contain interleaved content from
+// other tools.
+func (m *Manifest) PruneOwned(desired map[string]bool) []string {
+	var pruned []string
+	kept := m.Records[:0] // reuse backing array
+	for _, r := range m.Records {
+		if r.Type == Owned && !desired[r.Path] {
+			pruned = append(pruned, r.Path)
+			continue
+		}
+		kept = append(kept, r)
+	}
+	m.Records = kept
+	return pruned
+}
+
+// Remove deletes the record for a path if it exists.
+func (m *Manifest) Remove(path string) {
+	for i := range m.Records {
+		if m.Records[i].Path == path {
+			m.Records = append(m.Records[:i], m.Records[i+1:]...)
+			return
+		}
+	}
+}

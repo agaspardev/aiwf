@@ -45,6 +45,8 @@ func New(root, manifestPath string, entries []Entry) *Overlay {
 }
 
 // Apply aplica todas las entries de forma idempotente y guarda el manifiesto.
+// After upserting current entries, it prunes Owned files that were previously
+// managed but are no longer in the desired set (orphan cleanup).
 // Reconcile es un alias semántico: re-aplica para restaurar la coexistencia tras un
 // update de gentle-ai.
 func (o *Overlay) Apply() error {
@@ -52,6 +54,13 @@ func (o *Overlay) Apply() error {
 	if err != nil {
 		return fmt.Errorf("cargando manifiesto: %w", err)
 	}
+
+	// Build the desired path set before modifying the manifest.
+	desired := make(map[string]bool, len(o.Entries))
+	for _, e := range o.Entries {
+		desired[e.Path] = true
+	}
+
 	for _, e := range o.Entries {
 		// Para JSONMerge, leer el contenido actual ANTES de aplicar para poder
 		// detectar qué keys son nuevas (AddedKeys).
@@ -86,6 +95,19 @@ func (o *Overlay) Apply() error {
 		}
 		m.Upsert(r)
 	}
+
+	// Prune: remove Owned files that were previously managed but are no longer
+	// shipped. Only Owned entries are eligible — Shared types (MarkerBlock,
+	// JSONMerge) are never deleted by prune because their content is
+	// interleaved with other tools' data.
+	pruned := m.PruneOwned(desired)
+	for _, path := range pruned {
+		full := filepath.Join(o.Root, path)
+		_ = os.Remove(full)
+		// Best-effort: remove empty parent dirs up to root.
+		removeEmptyParents(o.Root, filepath.Dir(full))
+	}
+
 	return m.Save()
 }
 
@@ -155,4 +177,22 @@ func computeAddedKeys(baseJSON, overlayJSON []byte) []string {
 		}
 	}
 	return added
+}
+
+// removeEmptyParents removes empty directories between dir and root (exclusive).
+// Stops at the first non-empty directory. Best-effort: errors are ignored.
+func removeEmptyParents(root, dir string) {
+	absRoot, _ := filepath.Abs(root)
+	for {
+		absDir, _ := filepath.Abs(dir)
+		if absDir == absRoot || len(absDir) <= len(absRoot) {
+			return
+		}
+		entries, err := os.ReadDir(dir)
+		if err != nil || len(entries) > 0 {
+			return
+		}
+		os.Remove(dir)
+		dir = filepath.Dir(dir)
+	}
 }

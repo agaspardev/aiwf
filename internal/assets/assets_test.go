@@ -31,9 +31,9 @@ func TestBuildEntries(t *testing.T) {
 	if e, ok := byPath["settings.json"]; !ok || e.Type != overlay.JSONMerge {
 		t.Error("falta settings.json como JSONMerge")
 	}
-	// Contenido propio OWNED en ruta espejo.
-	if e, ok := byPath["skills/aiwf/aiwf-doctor.md"]; !ok || e.Type != overlay.Owned {
-		t.Error("falta una skill aiwf como OWNED")
+	// Contenido propio OWNED en ruta espejo (new packaged format).
+	if e, ok := byPath["skills/aiwf-init/SKILL.md"]; !ok || e.Type != overlay.Owned {
+		t.Error("falta skills/aiwf-init/SKILL.md como OWNED")
 	}
 	if e, ok := byPath["agents/security-reviewer.md"]; !ok || e.Type != overlay.Owned {
 		t.Error("falta un agent propio como OWNED")
