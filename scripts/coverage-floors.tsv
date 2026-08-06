@@ -7,6 +7,7 @@ cmd/aiwf	0
 internal/omniroute	85
 internal/sonar	80
 internal/config	85
+internal/containment	85
 internal/upstream	60
 internal/migrate	65
 internal/initproj	70

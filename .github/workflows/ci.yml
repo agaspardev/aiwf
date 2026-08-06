@@ -51,6 +51,9 @@ jobs:
       - name: Coverage floor gate
         run: sh scripts/coverage-gate.sh
 
+      - name: Containment gate
+        run: sh scripts/containment-gate.sh
+
   cross-compile:
     runs-on: ubuntu-latest
     strategy:

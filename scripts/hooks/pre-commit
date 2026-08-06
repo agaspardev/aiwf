@@ -7,9 +7,36 @@
 # Enable once per clone:  git config core.hooksPath scripts/hooks
 set -eu
 
+# 0) Containment (F2) — runs ALWAYS: no work artifact (scratch/notes/evidence/
+# reports/screenshots/playwright-report/coverage/handoffs dirs, coverage.out,
+# lcov.info, *.cov, *.log) may be staged outside .ai-workflow/. Fast shell check
+# on staged paths (the authoritative Go scan runs in CI). allowlist-aware.
+staged_all=$(git diff --cached --name-only --diff-filter=ACM || true)
+if [ -n "$staged_all" ]; then
+  bad=$(printf '%s\n' "$staged_all" \
+    | grep -Ev '^\.ai-workflow/' \
+    | grep -E '(^|/)(scratch|notes|evidence|reports|screenshots|playwright-report|coverage|handoffs)/|(^|/)(coverage\.out|lcov\.info)$|\.(cov|log)$' \
+    || true)
+  if [ -n "$bad" ] && [ -f scripts/containment-allow.txt ]; then
+    allowtmp=$(mktemp)
+    grep -vE '^[[:space:]]*(#|$)' scripts/containment-allow.txt > "$allowtmp" 2>/dev/null || true
+    if [ -s "$allowtmp" ]; then
+      bad=$(printf '%s\n' "$bad" | grep -vxF -f "$allowtmp" || true)
+    fi
+    rm -f "$allowtmp"
+  fi
+  if [ -n "$bad" ]; then
+    echo "pre-commit: containment — artefactos de trabajo fuera de .ai-workflow/:" >&2
+    printf '  %s\n' "$bad" >&2
+    echo "  movelos bajo .ai-workflow/ (o allowlistealos con justificación)" >&2
+    exit 1
+  fi
+fi
+
 # Staged Go files (added/copied/modified), excluding deletions.
 staged=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' || true)
 if [ -z "$staged" ]; then
+  echo "pre-commit: containment OK"
   exit 0
 fi
 

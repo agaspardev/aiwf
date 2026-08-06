@@ -9,6 +9,7 @@ import (
 
 	"github.com/agaspardev/aiwf/internal/assets"
 	"github.com/agaspardev/aiwf/internal/config"
+	"github.com/agaspardev/aiwf/internal/containment"
 	"github.com/agaspardev/aiwf/internal/docgen"
 	"github.com/agaspardev/aiwf/internal/gatekeeper"
 	"github.com/agaspardev/aiwf/internal/omniroute"
@@ -204,10 +205,13 @@ func documentCmd(args []string) int {
 // gateCmd valida un phase-contract contra el repo (determinista, cero tokens).
 func gateCmd(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "uso: aiwf gate <contract.json>")
+		fmt.Fprintln(os.Stderr, "uso: aiwf gate <contract.json> | --containment")
 		return 1
 	}
 	root, _ := os.Getwd()
+	if args[0] == "--containment" {
+		return containmentGate(root)
+	}
 	res, err := gatekeeper.Validate(root, args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "  error: %v\n", err)
@@ -223,6 +227,42 @@ func gateCmd(args []string) int {
 	}
 	fmt.Printf("  [OK] GATE PASA — %d artefacto(s) verificado(s). Próxima fase: %s\n", res.ArtifactCount, res.NextPhase)
 	return 0
+}
+
+// containmentGate verifica la contención de artefactos bajo .ai-workflow/ (F2).
+func containmentGate(root string) int {
+	allow := loadContainmentAllow(filepath.Join(root, "scripts", "containment-allow.txt"))
+	violations, err := containment.Scan(root, allow)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "  error: %v\n", err)
+		return 1
+	}
+	if len(violations) > 0 {
+		fmt.Println("[containment] BLOQUEADO — artefactos de trabajo fuera de .ai-workflow/:")
+		for _, v := range violations {
+			fmt.Printf("  - %s (%s)\n", v.Path, v.Kind)
+		}
+		return 1
+	}
+	fmt.Println("[containment] OK — todos los artefactos de trabajo están bajo .ai-workflow/.")
+	return 0
+}
+
+// loadContainmentAllow parsea una allowlist (una ruta POSIX por línea, # comentarios).
+func loadContainmentAllow(path string) map[string]bool {
+	allow := map[string]bool{}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return allow
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		allow[line] = true
+	}
+	return allow
 }
 
 // skillsCmd genera el registry de skills o (con --lint) solo verifica drift.

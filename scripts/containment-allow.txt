@@ -1,0 +1,5 @@
+# containment allowlist (F2) — una ruta relativa POSIX por línea; # comentarios.
+# Exime artefactos legítimos fuera de .ai-workflow/ que de otro modo el gate
+# marcaría (screenshots/coverage/reports/scratch/notes/evidence/handoffs dirs,
+# o coverage.out/lcov.info/*.cov/*.log files). Justificá cada excepción.
+# (vacío: no hay excepciones)
