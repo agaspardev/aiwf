@@ -26,3 +26,9 @@ Thumbs.db
 # ─── Dependencies (non-Go) ───
 node_modules/
 __pycache__/
+
+# ─── OmniRoute runtime checkout (local; NOT aiwf source) ───
+# Runtime/config del propio OmniRoute (proxy hub). aiwf lo instala vía
+# `npm/pnpm install -g omniroute`, no desde este dir. Puede contener API keys.
+# Para portabilidad real: curar config base en internal/assets/files/omniroute/.
+/omniroute/
