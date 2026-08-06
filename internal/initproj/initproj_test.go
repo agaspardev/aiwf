@@ -162,3 +162,71 @@ func assertNoEmptyDirs(t *testing.T, root string) {
 		t.Fatal(err)
 	}
 }
+
+func TestInitReportsGitRepoTrue(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	rep, err := Init(root, "demo", false)
+	if err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	if !rep.GitRepo {
+		t.Error("esperaba GitRepo=true con .git presente")
+	}
+	if rep.AlreadyInit {
+		t.Error("primera init no debería ser AlreadyInit")
+	}
+}
+
+func TestInitReportsGitRepoFalseWithWarning(t *testing.T) {
+	root := t.TempDir() // sin .git
+	rep, err := Init(root, "demo", false)
+	if err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	if rep.GitRepo {
+		t.Error("esperaba GitRepo=false sin .git")
+	}
+	if len(rep.Warnings) == 0 {
+		t.Error("esperaba warning cuando falta .git")
+	}
+}
+
+func TestInitSecondRunReportsAlreadyInit(t *testing.T) {
+	root := t.TempDir()
+	if _, err := Init(root, "demo", false); err != nil {
+		t.Fatal(err)
+	}
+	rep, err := Init(root, "demo", false)
+	if err != nil {
+		t.Fatalf("Init 2: %v", err)
+	}
+	if !rep.AlreadyInit {
+		t.Error("segunda init sobre workspace existente debería ser AlreadyInit")
+	}
+}
+
+func TestInitCreatesNoEmptyDirs(t *testing.T) {
+	root := t.TempDir()
+	if _, err := Init(root, "demo", false); err != nil {
+		t.Fatal(err)
+	}
+	base := filepath.Join(root, ".ai-workflow")
+	err := filepath.WalkDir(base, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			entries, _ := os.ReadDir(p)
+			if len(entries) == 0 {
+				t.Errorf("directorio vacío creado por init: %s", p)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}

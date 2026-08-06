@@ -43,6 +43,14 @@ func initCmd(args []string) int {
 		fmt.Fprintf(os.Stderr, "  error: %v\n", err)
 		return 1
 	}
+	if rep.GitRepo {
+		fmt.Println("  repo git:         detectado (.ai-workflow/ excluido vía .git/info/exclude)")
+	} else {
+		fmt.Println("  repo git:         NO detectado")
+	}
+	if rep.AlreadyInit {
+		fmt.Println("  estado:           ya inicializado (workspace.yaml existente; usá --force para regenerar)")
+	}
 	for _, c := range rep.Created {
 		fmt.Printf("  + %s\n", c)
 	}
@@ -51,6 +59,7 @@ func initCmd(args []string) int {
 	}
 	fmt.Printf("\n  init completado (%d creados, %d ya existían, %d avisos)\n",
 		len(rep.Created), len(rep.Skipped), len(rep.Warnings))
+	fmt.Println("  Sin directorios vacíos: los crea su comando dueño on-demand.")
 	fmt.Println("  Próximo paso: aiwf project new <subproject>")
 	return 0
 }

@@ -19,6 +19,10 @@ type Report struct {
 	Created  []string
 	Skipped  []string
 	Warnings []string
+	// GitRepo indica si el root es un repositorio git (hay .git/).
+	GitRepo bool
+	// AlreadyInit es true si el workspace ya existía (init idempotente, sin --force).
+	AlreadyInit bool
 }
 
 func (r *Report) created(path string) { r.Created = append(r.Created, path) }
@@ -42,9 +46,16 @@ func Init(root, name string, force bool) (*Report, error) {
 	if err != nil {
 		return report, fmt.Errorf("serializar workspace manifest: %w", err)
 	}
+	const workspaceLabel = ".ai-workflow/config/workspace.yaml"
 	path := filepath.Join(root, ".ai-workflow", "config", "workspace.yaml")
-	if err := writeIfMissing(path, string(data), force, report, ".ai-workflow/config/workspace.yaml"); err != nil {
+	if err := writeIfMissing(path, string(data), force, report, workspaceLabel); err != nil {
 		return report, err
+	}
+	// AlreadyInit: el manifest de workspace ya existía (fue omitido, no creado).
+	for _, s := range report.Skipped {
+		if s == workspaceLabel {
+			report.AlreadyInit = true
+		}
 	}
 	if err := ensureGitExclude(root, report); err != nil {
 		return report, err
@@ -102,6 +113,7 @@ func ensureGitExclude(root string, report *Report) error {
 		report.warn("No se detectó .git/. Añadí manualmente .ai-workflow/ a .git/info/exclude")
 		return nil
 	}
+	report.GitRepo = true
 
 	infoDir := filepath.Join(gitDir, "info")
 	if err := os.MkdirAll(infoDir, 0o755); err != nil {
