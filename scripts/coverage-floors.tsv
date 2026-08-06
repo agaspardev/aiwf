@@ -20,6 +20,7 @@ internal/overlay	80
 internal/report	85
 internal/skillreg	85
 internal/gatekeeper	85
+internal/govuln	90
 internal/harness	85
 internal/workspace	90
 internal/diag	95

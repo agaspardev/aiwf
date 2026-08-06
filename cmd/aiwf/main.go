@@ -53,6 +53,8 @@ func main() {
 		os.Exit(sonarCmd(os.Args[2:]))
 	case "migrate":
 		os.Exit(migrateCmd(os.Args[2:]))
+	case "report":
+		os.Exit(reportCmd(os.Args[2:]))
 	case "-h", "--help", "help":
 		usage()
 	default:

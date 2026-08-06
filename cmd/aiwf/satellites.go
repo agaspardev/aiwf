@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -12,7 +13,9 @@ import (
 	"github.com/agaspardev/aiwf/internal/containment"
 	"github.com/agaspardev/aiwf/internal/docgen"
 	"github.com/agaspardev/aiwf/internal/gatekeeper"
+	"github.com/agaspardev/aiwf/internal/govuln"
 	"github.com/agaspardev/aiwf/internal/omniroute"
+	"github.com/agaspardev/aiwf/internal/report"
 	"github.com/agaspardev/aiwf/internal/security"
 	"github.com/agaspardev/aiwf/internal/skillreg"
 	"github.com/agaspardev/aiwf/internal/sonar"
@@ -319,5 +322,92 @@ func geminiCmd(args []string) int {
 		return 1
 	}
 	fmt.Println(text)
+	return 0
+}
+
+// reportCmd agrega reportes SARIF/CycloneDX + govulncheck en ai-report.json y
+// ai-summary.md (F1 de ci-parity). Uso: aiwf report --reports <dir> [--out <dir>].
+func reportCmd(args []string) int {
+	reportsDir, outDir := "", ""
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--reports":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "error: --reports requiere un directorio")
+				return 2
+			}
+			reportsDir = args[i+1]
+			i++
+		case "--out":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "error: --out requiere un directorio")
+				return 2
+			}
+			outDir = args[i+1]
+			i++
+		default:
+			fmt.Fprintf(os.Stderr, "error: argumento desconocido: %s\n", args[i])
+			return 2
+		}
+	}
+	if reportsDir == "" {
+		fmt.Fprintln(os.Stderr, "uso: aiwf report --reports <dir> [--out <dir>]")
+		return 2
+	}
+	if outDir == "" {
+		outDir = reportsDir
+	}
+
+	var findings []report.Finding
+	entries, err := os.ReadDir(reportsDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "  error leyendo reportes: %v\n", err)
+		return 1
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		data, readErr := os.ReadFile(filepath.Join(reportsDir, name))
+		if readErr != nil {
+			continue
+		}
+		switch {
+		case strings.HasSuffix(name, ".sarif"):
+			fs, perr := report.ParseSARIF(data)
+			if perr != nil {
+				fmt.Fprintf(os.Stderr, "  ! %s: %v\n", name, perr)
+				continue
+			}
+			findings = append(findings, fs...)
+		case strings.HasPrefix(name, "sbom") && strings.HasSuffix(name, ".json"):
+			fs, perr := report.ParseCycloneDX(data)
+			if perr != nil {
+				fmt.Fprintf(os.Stderr, "  ! %s: %v\n", name, perr)
+				continue
+			}
+			findings = append(findings, fs...)
+		}
+	}
+
+	// govulncheck (P1): opcional, solo si está en PATH.
+	if _, lookErr := exec.LookPath("govulncheck"); lookErr == nil {
+		out, _ := exec.Command("govulncheck", "-json", "./...").Output()
+		if len(out) > 0 {
+			if fs, perr := govuln.ParseGovulncheck(out); perr == nil {
+				findings = append(findings, fs...)
+			}
+		}
+	}
+
+	cwd, _ := os.Getwd()
+	rep := report.BuildReport(filepath.Base(cwd), findings)
+	if err := report.WriteReport(outDir, rep); err != nil {
+		fmt.Fprintf(os.Stderr, "  error emitiendo reporte: %v\n", err)
+		return 1
+	}
+	fmt.Printf("[report] %d finding(s) de %d tool(s) -> %s/ai-report.json + ai-summary.md\n",
+		len(rep.Findings), len(rep.Tools), outDir)
 	return 0
 }
