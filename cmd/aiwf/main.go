@@ -33,11 +33,11 @@ func main() {
 		os.Exit(initCmd(os.Args[2:]))
 	case "project":
 		os.Exit(projectCmd(os.Args[2:]))
-	case "estado":
-		os.Exit(estado(os.Args[2:]))
-	case "diagnostico":
-		os.Exit(diagnostico())
-	case "document", "documentar":
+	case "status":
+		os.Exit(statusCmd(os.Args[2:]))
+	case "check":
+		os.Exit(checkCmd())
+	case "document":
 		os.Exit(documentCmd(os.Args[2:]))
 	case "gate":
 		os.Exit(gateCmd(os.Args[2:]))
@@ -53,10 +53,7 @@ func main() {
 		os.Exit(sonarCmd(os.Args[2:]))
 	case "migrate":
 		os.Exit(migrateCmd(os.Args[2:]))
-	case "prueba":
-		fmt.Fprintln(os.Stderr, "uso: aiwf <modo> <subproject> --dry-run")
-		os.Exit(2)
-	case "-h", "--help", "help", "ayuda":
+	case "-h", "--help", "help":
 		usage()
 	default:
 		// Cualquier otro token se interpreta como un modo de trabajo.
@@ -75,7 +72,7 @@ func parseRunArgs(args []string) (subproject string, dryRun, skipPerms bool, err
 		switch arg {
 		case "--dry-run", "--dryrun":
 			dryRun = true
-		case "--skip-perms", "--skip-permisos":
+		case "--skip-perms":
 			skipPerms = true
 		default:
 			if len(arg) > 0 && arg[0] == '-' {
@@ -114,8 +111,8 @@ Sesiones (modos de trabajo):
 Herramientas:
   aiwf init [--name N] [--force]   Inicializa control plane mínimo .ai-workflow/
   aiwf project new <subproject>    Crea únicamente el manifest del subproyecto
-  aiwf estado <subproject> [--change C]  Estado scoped del workflow
-  aiwf diagnostico     Verifica el toolchain operativo (claude, omniroute, ...)
+  aiwf status <subproject> [--change C]  Estado scoped del workflow
+  aiwf check           Verifica el toolchain operativo (claude, omniroute, ...)
   aiwf document [full|update] [-s]  Documenta el proyecto (determinista, cero tokens)
   aiwf gate <c.json>   Valida un phase-contract contra el repo (determinista)
   aiwf skills [--lint] Genera el registry de skills / detecta drift

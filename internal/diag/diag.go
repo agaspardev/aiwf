@@ -1,4 +1,4 @@
-// Package diag implementa el diagnóstico del toolchain operativo (`aiwf diagnostico`),
+// Package diag implementa el diagnóstico del toolchain operativo (`aiwf check`),
 // portado del modo -Doctor de harness.ps1: verifica herramientas con degradación
 // graceful (ausente = DEGRADED, no error), salvo las críticas.
 package diag

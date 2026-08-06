@@ -96,15 +96,15 @@ func projectCmd(args []string) int {
 	return 0
 }
 
-// estado muestra el estado scoped de un subproyecto o change.
-func estado(args []string) int {
+// statusCmd muestra el estado scoped de un subproyecto o change.
+func statusCmd(args []string) int {
 	scopeRequest, rest, err := parseScopedArgs(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 2
 	}
 	if len(rest) > 1 || (len(rest) == 1 && scopeRequest.Subproject != "") {
-		fmt.Fprintln(os.Stderr, "uso: aiwf estado <subproject> [--change <change>]")
+		fmt.Fprintln(os.Stderr, "uso: aiwf status <subproject> [--change <change>]")
 		return 2
 	}
 	if len(rest) == 1 {
@@ -165,10 +165,10 @@ func estado(args []string) int {
 	return 0
 }
 
-// diagnostico verifica el toolchain operativo con degradación graceful (harness -Doctor).
-func diagnostico() int {
+// checkCmd verifica el toolchain operativo con degradación graceful (harness -Doctor).
+func checkCmd() int {
 	checks := diag.Run(diag.DefaultChecks())
-	fmt.Println("aiwf diagnostico")
+	fmt.Println("aiwf check")
 	for _, c := range checks {
 		icon := "[OK]      "
 		if !c.Present {

@@ -34,7 +34,7 @@ func Load(changeDir string) (*State, bool, error) {
 	return &state, true, nil
 }
 
-// ChangeSummary is one change's reported phase/status for `aiwf estado`.
+// ChangeSummary is one change's reported phase/status for `aiwf status`.
 // Inferred is true when Phase did not come from state.yaml but was derived
 // from the most advanced artifact present in the change directory.
 type ChangeSummary struct {

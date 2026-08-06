@@ -34,5 +34,5 @@ Actualizar solo el conocimiento impactado y mantener todo `.ai-workflow/` exclui
 ```bash
 aiwf sonar changed    # SonarQube analysis of modified files
 aiwf security sast    # Quick SAST scan
-aiwf estado           # Workflow status
+aiwf status           # Workflow status
 ```
