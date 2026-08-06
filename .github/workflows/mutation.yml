@@ -1,0 +1,30 @@
+name: Mutation
+
+# Mutation testing es LENTO (corre la suite una vez por mutante), por eso NO va en
+# el CI de cada push: workflow separado, programado semanal + a demanda.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1' # lunes 06:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.25'
+          check-latest: true
+
+      - name: Install gremlins
+        run: go install github.com/go-gremlins/gremlins/cmd/gremlins@latest
+
+      - name: Mutation testing (paquetes de lógica nueva)
+        run: sh scripts/mutation-gate.sh

@@ -1,0 +1,12 @@
+# gremlins — mutation testing. Verifica que los tests ATRAPAN bugs (matan
+# mutantes), no solo que ejecutan la línea. Es la señal real detrás de TDD y de
+# la cobertura: cierra la brecha que coverage-gate (proxy) no puede.
+#
+# NOTA: umbrales conservadores iniciales; la PRIMERA corrida establece el baseline
+# real (gremlins no estaba instalado al crear esto). Ratchetear al alza como los
+# coverage-floors una vez medido.
+unleash:
+  # % de mutantes cubiertos que deben ser MUERTOS por los tests.
+  threshold-efficacy: 65
+  # % de mutantes que deben estar cubiertos por algún test.
+  threshold-mcover: 70
