@@ -4,7 +4,7 @@
 # Raise a floor when you raise coverage; never lower one to make CI pass.
 # cmd/aiwf is exempt (floor 0): CLI wiring, exercised via integration, not unit.
 cmd/aiwf	0
-internal/omniroute	45
+internal/omniroute	55
 internal/sonar	45
 internal/config	55
 internal/upstream	60
