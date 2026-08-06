@@ -113,15 +113,31 @@ func estado(args []string) int {
 		return 2
 	}
 	if scope.Change == "" {
-		changes, listErr := state.ListChanges(scope.Paths.Changes)
+		sums, listErr := state.Summarize(scope.Paths.Changes)
 		if listErr != nil {
 			fmt.Fprintf(os.Stderr, "error leyendo changes: %v\n", listErr)
 			return 1
 		}
 		fmt.Printf("Estado del subproyecto — %s\n", scope.Subproject)
-		for _, change := range changes {
-			fmt.Printf("  - %s\n", change)
+		active, completed := 0, 0
+		for _, s := range sums {
+			marker := ""
+			if s.Inferred {
+				marker = " (inferida)"
+			}
+			status := s.Status
+			if status == "" {
+				status = "-"
+			}
+			fmt.Printf("  - %-40s fase=%s%s  estado=%s\n", s.Name, s.Phase, marker, status)
+			switch {
+			case s.Phase == "archive" || s.Status == "archived" || s.Status == "completed":
+				completed++
+			default:
+				active++
+			}
 		}
+		fmt.Printf("\n  Resumen: %d activos, %d completados (%d total)\n", active, completed, len(sums))
 		return 0
 	}
 

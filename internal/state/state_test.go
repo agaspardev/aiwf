@@ -71,3 +71,74 @@ func TestListChanges(t *testing.T) {
 		t.Fatalf("changes = %v", changes)
 	}
 }
+
+func TestSummarizeWithStateYaml(t *testing.T) {
+	changesDir := t.TempDir()
+	ch := filepath.Join(changesDir, "add-auth")
+	if err := os.MkdirAll(ch, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := "schemaVersion: 1\nsubproject: demo\nchange: add-auth\nstatus: active\nphase: apply\nknowledgeLevel: K2\n"
+	if err := os.WriteFile(filepath.Join(ch, FileName), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sums, err := Summarize(changesDir)
+	if err != nil {
+		t.Fatalf("Summarize: %v", err)
+	}
+	if len(sums) != 1 {
+		t.Fatalf("esperaba 1 summary, got %d", len(sums))
+	}
+	s := sums[0]
+	if s.Name != "add-auth" || s.Phase != "apply" || s.Status != "active" || s.Inferred {
+		t.Fatalf("summary = %+v (esperaba phase=apply status=active inferred=false)", s)
+	}
+}
+
+func TestSummarizeInfersPhaseFromArtifacts(t *testing.T) {
+	changesDir := t.TempDir()
+	cases := map[string]struct {
+		files []string
+		phase string
+	}{
+		"only-proposal": {[]string{"proposal.md"}, "propose"},
+		"up-to-tasks":   {[]string{"exploration.md", "proposal.md", "design.md", "tasks.md"}, "tasks"},
+		"archived":      {[]string{"proposal.md", "archive"}, "archive"},
+		"empty":         {nil, "unknown"},
+	}
+	for name, tc := range cases {
+		dir := filepath.Join(changesDir, name)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range tc.files {
+			p := filepath.Join(dir, f)
+			if f == "archive" {
+				if err := os.MkdirAll(p, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				continue
+			}
+			if err := os.WriteFile(p, []byte("x"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	sums, err := Summarize(changesDir)
+	if err != nil {
+		t.Fatalf("Summarize: %v", err)
+	}
+	got := map[string]ChangeSummary{}
+	for _, s := range sums {
+		got[s.Name] = s
+	}
+	for name, tc := range cases {
+		s := got[name]
+		if s.Phase != tc.phase {
+			t.Errorf("%s: phase=%q esperaba %q", name, s.Phase, tc.phase)
+		}
+		if !s.Inferred {
+			t.Errorf("%s: esperaba Inferred=true", name)
+		}
+	}
+}
