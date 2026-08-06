@@ -56,4 +56,11 @@ if ! vetout=$(go vet ./... 2>&1); then
   exit 1
 fi
 
-echo "pre-commit: gofmt + vet OK"
+# 3) arch-gate — el núcleo puro (internal/workspace) debe seguir I/O-free.
+#    Barato (go list); atrapa una regresión de arquitectura antes del commit.
+if ! archout=$(sh scripts/arch-gate.sh 2>&1); then
+  echo "$archout" >&2
+  exit 1
+fi
+
+echo "pre-commit: gofmt + vet + arch OK"

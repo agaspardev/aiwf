@@ -1,0 +1,36 @@
+# golangci-lint — gates de complejidad (proxy de CRAP) + arquitectura (depguard).
+# NOTA: config estándar v1; verificar al correr `golangci-lint run` (el binario no
+# estaba disponible al crearla). Thresholds conservadores para no romper código
+# existente; ratchetear a la baja cuando se verifique, igual que coverage-floors.
+run:
+  timeout: 5m
+
+linters:
+  disable-all: true
+  enable:
+    - gocyclo   # complejidad ciclomática (componente de CRAP)
+    - gocognit  # complejidad cognitiva
+    - depguard  # dirección de dependencias (arquitectura limpia)
+
+linters-settings:
+  gocyclo:
+    min-complexity: 25
+  gocognit:
+    min-complexity: 40
+  depguard:
+    rules:
+      workspace-pure:
+        files:
+          - "**/internal/workspace/*.go"
+          - "!**/*_test.go"
+        deny:
+          - pkg: "os"
+            desc: "internal/workspace es el núcleo I/O-free (F0); ver scripts/arch-gate.sh"
+          - pkg: "os/exec"
+            desc: "núcleo I/O-free (F0)"
+          - pkg: "net/http"
+            desc: "núcleo I/O-free (F0)"
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
