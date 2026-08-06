@@ -1,6 +1,6 @@
 // Package security orquesta el pipeline AppSec (gitleaks/semgrep/osv-scanner/trivy/syft),
 // portado de security-scan.ps1: ejecuta cada herramienta como subproceso, escribe reportes
-// en .ai-workflow/evidence/security/ y produce un summary. Herramientas externas y
+// en el evidence/security owner inyectado y produce un summary. Herramientas externas y
 // LookPath son inyectables para testear.
 package security
 

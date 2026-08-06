@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 2,
+  "lastValidated": "2026-07-27",
+  "models": {
+    "cx/gpt-5.6-sol": {
+      "class": "agent",
+      "toolCall": true,
+      "localRead": true,
+      "localWrite": true,
+      "reason": "Certified through Claude Code Read/Write loop against OmniRoute on 2026-07-27"
+    },
+    "cx/gpt-5.6-sol-high": {
+      "class": "agent",
+      "toolCall": true,
+      "localRead": true,
+      "localWrite": true,
+      "reason": "Certified through Claude Code Read/Write loop against OmniRoute on 2026-07-27"
+    },
+    "cgpt-web/gpt-5.5": {
+      "class": "auxiliary",
+      "toolCall": false,
+      "localRead": false,
+      "localWrite": false,
+      "reason": "Query-only web transport"
+    },
+    "cgpt-web/gpt-5.5-pro": {
+      "class": "auxiliary",
+      "toolCall": false,
+      "localRead": false,
+      "localWrite": false,
+      "reason": "Query-only web transport"
+    },
+    "cgpt-web/gpt-5.5-pro-extended": {
+      "class": "auxiliary",
+      "toolCall": false,
+      "localRead": false,
+      "localWrite": false,
+      "reason": "Query-only web transport"
+    },
+    "cgpt-web/gpt-5.5-thinking": {
+      "class": "auxiliary",
+      "toolCall": false,
+      "localRead": false,
+      "localWrite": false,
+      "reason": "Query-only web transport"
+    },
+    "cgpt-web/gpt-5.6-thinking": {
+      "class": "auxiliary",
+      "toolCall": false,
+      "localRead": false,
+      "localWrite": false,
+      "reason": "Query-only web transport"
+    },
+    "gweb/gemini-3.5-flash": {
+      "class": "auxiliary",
+      "toolCall": false,
+      "localRead": false,
+      "localWrite": false,
+      "reason": "Query-only web transport"
+    },
+    "gweb/gemini-3.1-pro": {
+      "class": "auxiliary",
+      "toolCall": false,
+      "localRead": false,
+      "localWrite": false,
+      "reason": "Query-only web transport"
+    },
+    "qwen-web/qwen3.7-max": {
+      "class": "auxiliary",
+      "toolCall": false,
+      "localRead": false,
+      "localWrite": false,
+      "reason": "Query-only web transport"
+    },
+    "qwen-web/qwen3.6-plus": {
+      "class": "auxiliary",
+      "toolCall": false,
+      "localRead": false,
+      "localWrite": false,
+      "reason": "Query-only web transport"
+    },
+    "groq/openai/gpt-oss-120b": {
+      "class": "blocked",
+      "toolCall": false,
+      "localRead": false,
+      "localWrite": false,
+      "reason": "Claude Code request exceeded the provider request limit before tool execution"
+    },
+    "openrouter/openai/gpt-oss-20b:free": {
+      "class": "blocked",
+      "toolCall": false,
+      "localRead": false,
+      "localWrite": false,
+      "reason": "Catalog model was not accessible in direct Claude Code tests"
+    }
+  }
+}

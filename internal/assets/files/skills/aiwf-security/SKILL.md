@@ -21,7 +21,7 @@ Run the AppSec security pipeline for the current project.
 
 1. Ask for user confirmation before running (the scan may take several minutes).
 2. Delegate to `aiwf security <scope>`.
-3. Read the generated `scan-summary-*.md` in `.ai-workflow/evidence/security/`.
+3. Read the generated `scan-summary-*.md` in `${AIWF_CHANGE_ROOT}/evidence/security/`.
 4. Report:
    - BLOCK findings (block the quality gate)
    - WARN findings (document as technical debt)

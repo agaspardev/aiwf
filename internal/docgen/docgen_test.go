@@ -74,7 +74,9 @@ func TestGenerateWritesArtifacts(t *testing.T) {
 	mk(t, filepath.Join(root, "go.mod"), "module demo\n\nrequire github.com/foo/bar v1.0.0\n")
 	mk(t, filepath.Join(root, "main.go"), "package main\nfunc main(){}\n")
 
-	rep, res, err := Generate(root, "full", false)
+	knowledge := filepath.Join(root, ".ai-workflow", "knowledge", "projects", "demo")
+	evidence := filepath.Join(root, ".ai-workflow", "projects", "demo", "changes", "baseline", "evidence")
+	rep, res, err := Generate(root, knowledge, evidence, "full", false)
 	if err != nil {
 		t.Fatalf("Generate: %v", err)
 	}
@@ -85,6 +87,15 @@ func TestGenerateWritesArtifacts(t *testing.T) {
 		if _, err := os.Stat(p); err != nil {
 			t.Errorf("no se generó %s: %v", p, err)
 		}
+	}
+	if filepath.Dir(res.ContextPackPath) != knowledge || filepath.Dir(res.ArchitecturePath) != knowledge {
+		t.Fatalf("knowledge fuera del scope explícito: %+v", res)
+	}
+	if !strings.HasPrefix(res.ReportPath, evidence+string(filepath.Separator)) {
+		t.Fatalf("evidence fuera del owner de change: %s", res.ReportPath)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".claude", "knowledge")); !os.IsNotExist(err) {
+		t.Fatal("docgen no debe crear .claude/knowledge")
 	}
 	// context-pack menciona el stack.
 	cp, _ := os.ReadFile(res.ContextPackPath)
@@ -98,17 +109,29 @@ func TestGenerateWritesArtifacts(t *testing.T) {
 	}
 }
 
+func TestGenerateRequiresExplicitOwners(t *testing.T) {
+	root := t.TempDir()
+	if _, _, err := Generate(root, "", "", "full", false); err == nil {
+		t.Fatal("Generate debe rechazar owners vacíos")
+	}
+	if _, err := os.Stat(filepath.Join(root, ".ai-workflow")); !os.IsNotExist(err) {
+		t.Fatal("Generate inválido no debe escribir")
+	}
+}
+
 func TestUpdateModeArchivesPrevious(t *testing.T) {
 	root := t.TempDir()
 	mk(t, filepath.Join(root, "go.mod"), "module demo\n")
 
+	knowledge := filepath.Join(root, ".ai-workflow", "knowledge", "projects", "demo")
+	evidence := filepath.Join(root, ".ai-workflow", "projects", "demo", "changes", "baseline", "evidence")
 	// Primera generación.
-	if _, _, err := Generate(root, "full", false); err != nil {
+	if _, _, err := Generate(root, knowledge, evidence, "full", false); err != nil {
 		t.Fatal(err)
 	}
 	// Cambiar el proyecto (añadir dep) y correr update → debería archivar la previa.
 	mk(t, filepath.Join(root, "package.json"), `{"dependencies":{"react":"^18.0.0"}}`)
-	_, res, err := Generate(root, "update", false)
+	_, res, err := Generate(root, knowledge, evidence, "update", false)
 	if err != nil {
 		t.Fatal(err)
 	}

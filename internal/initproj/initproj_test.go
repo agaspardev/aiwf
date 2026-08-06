@@ -1,12 +1,15 @@
 package initproj
 
 import (
-	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
+
+	"github.com/agaspardev/aiwf/internal/workspace"
 )
 
 func gitInit(t *testing.T) string {
@@ -21,49 +24,47 @@ func gitInit(t *testing.T) string {
 	return root
 }
 
-func TestInitCreatesStructure(t *testing.T) {
+func TestInitCreatesMinimalWorkspace(t *testing.T) {
 	root := gitInit(t)
-	if _, err := Init(root, "demo", false); err != nil {
+	report, err := Init(root, "demo", false)
+	if err != nil {
 		t.Fatalf("Init: %v", err)
 	}
 
-	for _, d := range []string{
-		".ai-workflow/state", ".ai-workflow/openspec/changes/archive",
-		".ai-workflow/evidence/security", ".claude/knowledge",
-	} {
-		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(d))); err != nil {
-			t.Errorf("falta dir %s", d)
-		}
-	}
-
-	// Estado válido.
-	data, err := os.ReadFile(filepath.Join(root, ".ai-workflow", "state", "workflow-state.json"))
+	manifestPath := filepath.Join(root, ".ai-workflow", "config", "workspace.yaml")
+	data, err := os.ReadFile(manifestPath)
 	if err != nil {
-		t.Fatalf("estado no creado: %v", err)
+		t.Fatalf("workspace manifest no creado: %v", err)
 	}
-	var st map[string]any
-	if err := json.Unmarshal(data, &st); err != nil {
-		t.Fatalf("estado inválido: %v", err)
+	var manifest workspace.WorkspaceManifest
+	if err := yaml.Unmarshal(data, &manifest); err != nil {
+		t.Fatalf("workspace manifest inválido: %v", err)
 	}
-	if st["project"] != "demo" || st["phase"] != "INIT" {
-		t.Errorf("estado = %v", st)
+	if err := manifest.Validate(); err != nil {
+		t.Fatalf("workspace manifest no cumple contrato: %v", err)
+	}
+	if manifest.RepositoryID != "demo" {
+		t.Fatalf("repositoryId = %q, want demo", manifest.RepositoryID)
+	}
+	if len(report.Created) != 1 || report.Created[0] != ".ai-workflow/config/workspace.yaml" {
+		t.Fatalf("created = %v, want solo workspace manifest", report.Created)
 	}
 
-	// Exclude con los patrones del workflow.
-	ex, _ := os.ReadFile(filepath.Join(root, ".git", "info", "exclude"))
-	for _, p := range []string{".ai-workflow/", ".claude/", "sonar-project.properties"} {
-		if !strings.Contains(string(ex), p) {
-			t.Errorf("exclude no contiene %q", p)
+	for _, forbidden := range []string{
+		".claude/knowledge",
+		".claude/CLAUDE.md",
+		".ai-workflow/openspec",
+		".ai-workflow/state",
+		".ai-workflow/evidence",
+		".ai-workflow/notes",
+		"sonar-project.properties",
+	} {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(forbidden))); !os.IsNotExist(err) {
+			t.Errorf("init creó ruta legacy %s", forbidden)
 		}
 	}
 
-	// openspec + sonar props.
-	if _, err := os.Stat(filepath.Join(root, ".ai-workflow", "openspec", "config.yaml")); err != nil {
-		t.Error("falta openspec/config.yaml")
-	}
-	if _, err := os.Stat(filepath.Join(root, "sonar-project.properties")); err != nil {
-		t.Error("falta sonar-project.properties")
-	}
+	assertNoEmptyDirs(t, filepath.Join(root, ".ai-workflow"))
 }
 
 func TestInitIdempotent(t *testing.T) {
@@ -71,23 +72,93 @@ func TestInitIdempotent(t *testing.T) {
 	if _, err := Init(root, "demo", false); err != nil {
 		t.Fatal(err)
 	}
-	rep, err := Init(root, "demo", false)
+	report, err := Init(root, "demo", false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Segunda corrida: el estado ya existe → skipped.
-	foundSkip := false
-	for _, s := range rep.Skipped {
-		if strings.Contains(s, "workflow-state.json") {
-			foundSkip = true
+	if len(report.Created) != 0 || len(report.Skipped) != 1 {
+		t.Fatalf("second init created=%v skipped=%v", report.Created, report.Skipped)
+	}
+
+	exclude, err := os.ReadFile(filepath.Join(root, ".git", "info", "exclude"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count := strings.Count(string(exclude), ".ai-workflow/"); count != 1 {
+		t.Fatalf("patrón .ai-workflow/ aparece %d veces, want 1", count)
+	}
+}
+
+func TestInitProjectCreatesOnlyManifest(t *testing.T) {
+	root := gitInit(t)
+	report, err := InitProject(root, "aiwf-core", false)
+	if err != nil {
+		t.Fatalf("InitProject: %v", err)
+	}
+	path := filepath.Join(root, ".ai-workflow", "projects", "aiwf-core", "project.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest workspace.ProjectManifest
+	if err := yaml.Unmarshal(data, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if err := manifest.Validate(); err != nil {
+		t.Fatalf("invalid project manifest: %v", err)
+	}
+	if manifest.ArtifactStore != "hybrid" {
+		t.Fatalf("artifactStore = %q, want hybrid", manifest.ArtifactStore)
+	}
+	if len(report.Created) != 1 {
+		t.Fatalf("created = %v", report.Created)
+	}
+	assertNoEmptyDirs(t, filepath.Join(root, ".ai-workflow"))
+}
+
+func TestInitProjectIsIdempotent(t *testing.T) {
+	root := gitInit(t)
+	if _, err := InitProject(root, "aiwf-core", false); err != nil {
+		t.Fatal(err)
+	}
+	report, err := InitProject(root, "aiwf-core", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Created) != 0 || len(report.Skipped) != 1 {
+		t.Fatalf("created=%v skipped=%v", report.Created, report.Skipped)
+	}
+}
+
+func TestInitRejectsInvalidRepositoryID(t *testing.T) {
+	root := gitInit(t)
+	if _, err := Init(root, "../demo", false); err == nil {
+		t.Fatal("Init debería rechazar repositoryId inseguro")
+	}
+	if _, err := os.Stat(filepath.Join(root, ".ai-workflow")); !os.IsNotExist(err) {
+		t.Fatal("Init inválido no debe escribir .ai-workflow")
+	}
+}
+
+func assertNoEmptyDirs(t *testing.T, root string) {
+	t.Helper()
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
 		}
-	}
-	if !foundSkip {
-		t.Error("estado debería reportarse como skipped en la 2da corrida")
-	}
-	// Exclude no se duplica.
-	ex, _ := os.ReadFile(filepath.Join(root, ".git", "info", "exclude"))
-	if n := strings.Count(string(ex), ".ai-workflow/"); n != 1 {
-		t.Errorf("patrón .ai-workflow/ aparece %d veces en exclude, want 1", n)
+		if !entry.IsDir() {
+			return nil
+		}
+		children, err := os.ReadDir(path)
+		if err != nil {
+			return err
+		}
+		if len(children) == 0 {
+			t.Errorf("directorio vacío creado: %s", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }

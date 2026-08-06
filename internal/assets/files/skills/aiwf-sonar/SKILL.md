@@ -20,11 +20,11 @@ SonarQube integration for code quality analysis.
 
 1. Delegate to `aiwf sonar <mode>`.
 2. If SonarQube is not enabled in configuration, explain how to enable it.
-3. After analysis, read the generated summary in `.ai-workflow/evidence/sonar/` and incorporate into context.
+3. After analysis, read the generated summary in `${AIWF_CHANGE_ROOT}/evidence/sonar/` and incorporate into context.
 4. Report the Quality Gate status (OK / ERROR) with the most critical issues.
 5. If the gate is in ERROR: list blockers and suggest `/quality-gate` for full evaluation.
 
 ## Integration with quality-gate
 
 When running `/quality-gate`, this skill automatically includes the latest available
-`sonar-summary-*.md` from `.ai-workflow/evidence/sonar/` as evidence.
+`sonar-summary-*.md` from `${AIWF_CHANGE_ROOT}/evidence/sonar/` as evidence.

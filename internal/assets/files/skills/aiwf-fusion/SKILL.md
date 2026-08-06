@@ -34,5 +34,5 @@ Default: **`agent-critical` + `agent-daily`** (two distinct tiers = more diverse
 6. **The result is a PROPOSAL, not self-applied.** Deterministic gates (tests,
    `/quality-gate`, `/aiwf-security`) still decide. The auxiliary combo never writes
    the final output or runs verification.
-7. **Save** to `.ai-workflow/evidence/fusion/fusion-<timestamp>.md` with table + proposal
+7. **Save** to `${AIWF_CHANGE_ROOT}/evidence/fusion/fusion-<timestamp>.md` with table + proposal
    + hotspots + combos and cost.

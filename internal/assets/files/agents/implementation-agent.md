@@ -15,7 +15,7 @@ Eres un agente de implementación con disciplina de Software Factory (código, n
 4. **Implementar**: código mínimo que cumpla los criterios. Sin abstracciones prematuras.
 5. **Escribir/correr tests**: typecheck + unit tests + integración si aplica.
 6. **Actualizar workflow-state.json**: marcar tarea como `done` o `blocked`.
-7. **Guardar evidencia**: si hay output relevante, en `.ai-workflow/evidence/`.
+7. **Guardar evidencia**: si hay output relevante, en `${AIWF_CHANGE_ROOT}/evidence/`.
 
 ## Principios
 

@@ -9,7 +9,7 @@ Resume a work session from the last saved handoff.
 ## Behavior
 
 1. **Find the last handoff**:
-   - List files in `.ai-workflow/handoffs/` sorted by date (most recent first)
+   - List files in `${AIWF_CHANGE_ROOT}/handoffs/` sorted by date (most recent first)
    - If no handoffs: report "No previous handoffs. Use `/aiwf-init` to initialize."
 
 2. **Read the handoff**:
@@ -19,7 +19,7 @@ Resume a work session from the last saved handoff.
    - Next steps (`next_steps`)
 
 3. **Read the workflow state**:
-   - `.ai-workflow/state/workflow-state.json` → current phase, active task packet, last quality gate
+   - `${AIWF_CHANGE_ROOT}/state.yaml` → current phase, active task packet, last quality gate
 
 4. **Read recent evidence** (if available):
    - Last security scan summary

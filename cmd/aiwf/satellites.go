@@ -19,18 +19,25 @@ import (
 
 // sonarCmd integra SonarQube: gate | issues | changed | full (default gate).
 func sonarCmd(args []string) int {
+	scopeRequest, args, err := parseScopedArgs(args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[sonar] error: %v\n", err)
+		return 2
+	}
 	mode := "gate"
-	for _, a := range args {
-		if !strings.HasPrefix(a, "-") {
-			mode = a
-			break
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			fmt.Fprintf(os.Stderr, "[sonar] bandera desconocida: %s\n", arg)
+			return 2
 		}
+		mode = arg
+		break
 	}
 	cwd, _ := os.Getwd()
 	cfg := sonar.LoadConfig(cwd)
 	if !cfg.Enabled {
 		fmt.Println("[sonar] SonarQube no está habilitado.")
-		fmt.Println("  Habilitar en .ai-workflow/env/vault-config.local.json: \"sonarqube\": { \"enabled\": true, ... }")
+		fmt.Println("  Habilitar en .ai-workflow/config/local/vault-config.local.json: \"sonarqube\": { \"enabled\": true, ... }")
 		return 0
 	}
 
@@ -38,7 +45,7 @@ func sonarCmd(args []string) int {
 	switch mode {
 	case "gate":
 		if cfg.Token == "" {
-			fmt.Fprintln(os.Stderr, "[sonar] falta SONAR_TOKEN (completá .ai-workflow/env/.env.local)")
+			fmt.Fprintln(os.Stderr, "[sonar] falta SONAR_TOKEN (completá .ai-workflow/config/local/env.local)")
 			return 1
 		}
 		status, err := cfg.GateStatus(ctx)
@@ -71,8 +78,13 @@ func sonarCmd(args []string) int {
 		}
 		return 0
 	case "changed", "full":
+		resolved, err := resolveScope(cwd, scopeRequest, true)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[sonar] error: %v\n", err)
+			return 2
+		}
 		fmt.Printf("[sonar] análisis %s con sonar-scanner...\n", mode)
-		code := cfg.Scan(mode == "full", ".")
+		code := cfg.Scan(mode == "full", ".", filepath.Join(resolved.Paths.Evidence, "sonar"))
 		return code
 	default:
 		fmt.Fprintf(os.Stderr, "[sonar] modo desconocido: %q (gate|issues|changed|full)\n", mode)
@@ -82,18 +94,31 @@ func sonarCmd(args []string) int {
 
 // securityCmd corre el pipeline AppSec (secrets|sast|sca|sbom|all).
 func securityCmd(args []string) int {
+	scopeRequest, args, err := parseScopedArgs(args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "  error: %v\n", err)
+		return 2
+	}
 	scopeStr, target := "", "."
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--target":
-			if i+1 < len(args) {
-				target = args[i+1]
-				i++
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "  error: --target requiere un valor")
+				return 2
 			}
+			target = args[i+1]
+			i++
 		default:
-			if !strings.HasPrefix(args[i], "-") && scopeStr == "" {
-				scopeStr = args[i]
+			if strings.HasPrefix(args[i], "-") {
+				fmt.Fprintf(os.Stderr, "  error: bandera desconocida: %s\n", args[i])
+				return 2
 			}
+			if scopeStr != "" {
+				fmt.Fprintln(os.Stderr, "  error: solo se admite un scope de security")
+				return 2
+			}
+			scopeStr = args[i]
 		}
 	}
 	scope, err := security.ParseScope(scopeStr)
@@ -103,7 +128,12 @@ func securityCmd(args []string) int {
 	}
 
 	cwd, _ := os.Getwd()
-	reports := filepath.Join(cwd, ".ai-workflow", "evidence", "security")
+	resolved, err := resolveScope(cwd, scopeRequest, true)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "  error: %v\n", err)
+		return 2
+	}
+	reports := filepath.Join(resolved.Paths.Evidence, "security")
 	runner := security.NewRunner(target, reports)
 
 	// Cargar política de clasificación desde assets embebidos.
@@ -132,6 +162,11 @@ func securityCmd(args []string) int {
 
 // documentCmd genera documentación determinista del proyecto (cero tokens).
 func documentCmd(args []string) int {
+	scopeRequest, args, err := parseScopedArgs(args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "  error: %v\n", err)
+		return 2
+	}
 	mode, synthesize := "full", false
 	for _, a := range args {
 		switch a {
@@ -144,8 +179,13 @@ func documentCmd(args []string) int {
 		}
 	}
 	root, _ := os.Getwd()
-	fmt.Printf("[document] extracción determinista (%s) — %s\n", mode, root)
-	rep, res, err := docgen.Generate(root, mode, synthesize)
+	scope, err := resolveScope(root, scopeRequest, true)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "  error: %v\n", err)
+		return 2
+	}
+	fmt.Printf("[document] extracción determinista (%s) — %s/%s\n", mode, scope.Subproject, scope.Change)
+	rep, res, err := docgen.Generate(root, scope.Paths.KnowledgeProject, scope.Paths.Evidence, mode, synthesize)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "  error: %v\n", err)
 		return 1

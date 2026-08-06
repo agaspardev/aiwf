@@ -46,13 +46,18 @@ func (g Gates) Resolve(gateSet string) []string {
 
 // ContractParams son los datos variables del contract prompt.
 type ContractParams struct {
-	InstanceRoot string
-	ModeName     string
-	Mode         Mode
-	OmniStatus   string // "ONLINE" | "OFFLINE (using default model)"
-	SonarStatus  string
-	Gates        []string
-	ResumeBlock  string // contexto de handoff opcional (ya formateado)
+	InstanceRoot     string
+	ModeName         string
+	Mode             Mode
+	OmniStatus       string // "ONLINE" | "OFFLINE (using default model)"
+	SonarStatus      string
+	Gates            []string
+	ResumeBlock      string // contexto de handoff opcional (ya formateado)
+	Subproject       string
+	ProjectRoot      string
+	KnowledgeShared  string
+	KnowledgeProject string
+	ChangeRoot       string
 }
 
 // contractBody es el cuerpo estático del contrato (comportamiento obligatorio,
@@ -67,7 +72,7 @@ const contractBody = `MANDATORY BEHAVIOR:
 - Save significant decisions, discoveries and bugfixes to Engram (mem_save).
 - Before ending the session: mem_session_summary is MANDATORY.
 - Context policy: operate within 20% of context window. At 15%: no new broad investigations.
-  At 18%: persist state, write handoff to .ai-workflow/handoffs/, end session.
+  At 18%: persist state and handoff under the resolved AIWF_CHANGE_ROOT, then end session.
 - P8 (Code before agent): if the result can be obtained by code (cache, grep, git, script),
   do not invoke an agent. Agents are last resort for creative generation only.
 
@@ -95,7 +100,10 @@ func BuildContract(p ContractParams) string {
 	fmt.Fprintf(&b, "Instance: %s\n", p.InstanceRoot)
 	fmt.Fprintf(&b, "Mode: %s | Combo: %s | Risk: %s | Gate: %s\n",
 		p.ModeName, p.Mode.Combo, p.Mode.Risk, p.Mode.GateSet)
-	fmt.Fprintf(&b, "OmniRoute: %s | SonarQube: %s\n\n", p.OmniStatus, p.SonarStatus)
+	fmt.Fprintf(&b, "OmniRoute: %s | SonarQube: %s\n", p.OmniStatus, p.SonarStatus)
+	fmt.Fprintf(&b, "Workspace: subproject=%s | project_root=%s\n", p.Subproject, p.ProjectRoot)
+	fmt.Fprintf(&b, "Change root: unset until /sdd-new or /sdd-continue selects one under %s\n", p.ChangeRoot)
+	fmt.Fprintf(&b, "Knowledge: shared=%s | project=%s\n\n", p.KnowledgeShared, p.KnowledgeProject)
 
 	b.WriteString(contractBody)
 

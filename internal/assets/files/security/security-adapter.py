@@ -24,10 +24,9 @@ from typing import Any
 
 # ── Restricciones de seguridad ────────────────────────────────────────────────
 
-# WORKSPACE se toma de la variable de entorno (la fija mcp/servers.json).
-# Por defecto el cwd. Es el ÚNICO árbol que el adapter puede escanear.
+# WORKSPACE es el árbol que se escanea. Los reportes requieren un change owner
+# explícito; sin AIWF_CHANGE_ROOT el adapter falla cerrado.
 WORKSPACE = Path(os.environ.get("WORKSPACE") or ".").resolve()
-REPORTS_DIR = WORKSPACE / ".ai-workflow" / "evidence" / "security"
 
 ALLOWED_COMMANDS: dict[str, list[str]] = {
     "semgrep": [
@@ -58,6 +57,14 @@ def validate_path(p: str) -> Path:
     return path
 
 
+def reports_dir() -> Path:
+    """Resuelve evidence/security del change activo o falla cerrado."""
+    change_root = os.environ.get("AIWF_CHANGE_ROOT")
+    if not change_root:
+        raise ValueError("AIWF_CHANGE_ROOT no está resuelto; activá un change primero")
+    return validate_path(change_root) / "evidence" / "security"
+
+
 def content_hash(tool: str) -> str:
     """
     Deduplicación basada en contenido de lock files.
@@ -85,9 +92,10 @@ def execute_tool(tool: str, extra_args: list[str] | None = None) -> dict[str, An
             f"Permitidas: {list(ALLOWED_COMMANDS)}"
         )
 
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    reports = reports_dir()
+    reports.mkdir(parents=True, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    report_file = REPORTS_DIR / f"{tool}-{ts}.json"
+    report_file = reports / f"{tool}-{ts}.json"
 
     cmd = list(ALLOWED_COMMANDS[tool])  # copia — nunca mutar la whitelist
 
@@ -152,7 +160,7 @@ TOOLS_MANIFEST = [
     {
         "name": "security_list_reports",
         "description": (
-            "Lista los reportes de seguridad generados en .ai-workflow/evidence/security/. "
+            "Lista los reportes de seguridad generados en ${AIWF_CHANGE_ROOT}/evidence/security/. "
             "Incluye nombre, fecha y tamaño. Útil para encontrar el reporte más reciente."
         ),
         "inputSchema": {
@@ -169,7 +177,7 @@ TOOLS_MANIFEST = [
     {
         "name": "security_read_summary",
         "description": (
-            "Lee el contenido de un scan-summary-*.md en .ai-workflow/evidence/security/. "
+            "Lee el contenido de un scan-summary-*.md en ${AIWF_CHANGE_ROOT}/evidence/security/. "
             "Devuelve el texto del summary para incorporarlo al contexto. "
             "Preferir el más reciente si no se especifica archivo."
         ),
@@ -220,11 +228,12 @@ def handle_tools_call(req_id: Any, params: dict) -> dict:
             text = json.dumps(result, indent=2, ensure_ascii=False)
 
         elif tool_name == "security_list_reports":
+            reports = reports_dir()
             tool_filter = args.get("tool_filter", "")
-            if not REPORTS_DIR.exists():
+            if not reports.exists():
                 text = "No hay reportes aún. Ejecutar security_scan primero."
             else:
-                files = sorted(REPORTS_DIR.iterdir(), reverse=True)
+                files = sorted(reports.iterdir(), reverse=True)
                 if tool_filter:
                     files = [f for f in files if tool_filter in f.name]
                 entries = [
@@ -240,14 +249,15 @@ def handle_tools_call(req_id: Any, params: dict) -> dict:
                 text = json.dumps(entries, indent=2, ensure_ascii=False)
 
         elif tool_name == "security_read_summary":
+            reports = reports_dir()
             filename = args.get("filename")
             if filename:
-                target = validate_path(str(REPORTS_DIR / filename))
+                target = validate_path(str(reports / filename))
             else:
                 # El más reciente scan-summary-*.md
                 summaries = sorted(
-                    REPORTS_DIR.glob("scan-summary-*.md"), reverse=True
-                ) if REPORTS_DIR.exists() else []
+                    reports.glob("scan-summary-*.md"), reverse=True
+                ) if reports.exists() else []
                 if not summaries:
                     text = "No scan summaries available. Run: aiwf security all"
                     return _ok_result(req_id, text)

@@ -25,10 +25,15 @@ func initCmd(args []string) int {
 		case "--force", "-f":
 			force = true
 		case "--name":
-			if i+1 < len(args) {
-				name = args[i+1]
-				i++
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "error: --name requiere un valor")
+				return 2
 			}
+			name = args[i+1]
+			i++
+		default:
+			fmt.Fprintf(os.Stderr, "error: argumento desconocido: %s\n", args[i])
+			return 2
 		}
 	}
 
@@ -46,33 +51,92 @@ func initCmd(args []string) int {
 	}
 	fmt.Printf("\n  init completado (%d creados, %d ya existían, %d avisos)\n",
 		len(rep.Created), len(rep.Skipped), len(rep.Warnings))
-	fmt.Println("  Próximos pasos: completá .ai-workflow/env/.env.local y vault-config.local.json")
+	fmt.Println("  Próximo paso: aiwf project new <subproject>")
 	return 0
 }
 
-// estado muestra el estado del workflow del proyecto actual (harness -ShowState).
-func estado() int {
+func projectCmd(args []string) int {
+	if len(args) < 2 || args[0] != "new" {
+		fmt.Fprintln(os.Stderr, "uso: aiwf project new <subproject> [--force]")
+		return 2
+	}
+	name, force := args[1], false
+	for _, arg := range args[2:] {
+		if arg != "--force" && arg != "-f" {
+			fmt.Fprintf(os.Stderr, "error: argumento desconocido: %s\n", arg)
+			return 2
+		}
+		force = true
+	}
+	root, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
+	}
+	report, err := initproj.InitProject(root, name, force)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
+	}
+	for _, created := range report.Created {
+		fmt.Printf("  + %s\n", created)
+	}
+	for _, skipped := range report.Skipped {
+		fmt.Printf("  = %s\n", skipped)
+	}
+	return 0
+}
+
+// estado muestra el estado scoped de un subproyecto o change.
+func estado(args []string) int {
+	scopeRequest, rest, err := parseScopedArgs(args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 2
+	}
+	if len(rest) > 1 || (len(rest) == 1 && scopeRequest.Subproject != "") {
+		fmt.Fprintln(os.Stderr, "uso: aiwf estado <subproject> [--change <change>]")
+		return 2
+	}
+	if len(rest) == 1 {
+		scopeRequest.Subproject = rest[0]
+	}
 	cwd, err := os.Getwd()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 1
 	}
-	s, ok, err := state.Load(cwd)
+	requireChange := scopeRequest.Change != ""
+	scope, err := resolveScope(cwd, scopeRequest, requireChange)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 2
+	}
+	if scope.Change == "" {
+		changes, listErr := state.ListChanges(scope.Paths.Changes)
+		if listErr != nil {
+			fmt.Fprintf(os.Stderr, "error leyendo changes: %v\n", listErr)
+			return 1
+		}
+		fmt.Printf("Estado del subproyecto — %s\n", scope.Subproject)
+		for _, change := range changes {
+			fmt.Printf("  - %s\n", change)
+		}
+		return 0
+	}
+
+	s, ok, err := state.Load(scope.Paths.Change)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error leyendo estado: %v\n", err)
 		return 1
 	}
 	if !ok {
-		fmt.Println("No hay estado de workflow en el directorio actual.")
-		fmt.Println("Ejecutá 'aiwf init' para inicializar el proyecto.")
+		fmt.Printf("No hay state.yaml para %s/%s.\n", scope.Subproject, scope.Change)
 		return 0
 	}
-	fmt.Printf("Estado del workflow — %s\n", s.Project)
-	fmt.Printf("  Fase:           %s\n", s.Phase)
-	fmt.Printf("  Tareas activas: %d\n", len(s.ActiveTasks))
-	fmt.Printf("  Completadas:    %d\n", len(s.CompletedTasks))
-	fmt.Printf("  Bloqueadas:     %d\n", len(s.BlockedTasks))
-	fmt.Printf("  Siguiente:      %s\n", s.NextAction)
+	fmt.Printf("Estado del workflow — %s/%s\n", s.Subproject, s.Change)
+	fmt.Printf("  Fase:  %s\n", s.Phase)
+	fmt.Printf("  Estado: %s\n", s.Status)
 	return 0
 }
 

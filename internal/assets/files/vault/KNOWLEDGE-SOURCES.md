@@ -1,7 +1,7 @@
 # Fuentes de conocimiento para los agentes
 
 Esta nota es el **registro operativo** de los alcances que un agente puede consultar.
-Los paths concretos se configuran en `.ai-workflow/env/vault-config.local.json` — esta nota
+Los paths concretos se configuran en `.ai-workflow/config/local/vault-config.local.json` — esta nota
 documenta los scopes posibles y las reglas de acceso, no las rutas absolutas (que son personales).
 
 | Alcance | Configuración | Contenido | Cuándo consultar | Regla de acceso |
@@ -13,7 +13,7 @@ documenta los scopes posibles y las reglas de acceso, no las rutas absolutas (qu
 
 ## Cómo configurar los vaultPaths
 
-Editar `.ai-workflow/env/vault-config.local.json` en cada instancia instalada:
+Editar `.ai-workflow/config/local/vault-config.local.json` en cada instancia instalada:
 
 ```json
 {

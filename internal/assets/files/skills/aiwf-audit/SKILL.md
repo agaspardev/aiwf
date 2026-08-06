@@ -20,7 +20,7 @@ Full project audit: architecture, quality, security and migration readiness.
 1. **Structure**: `git ls-files | head -50` for quick mapping
 2. **Dependencies**: detect lock files and tools (npm, pnpm, go.sum, etc.)
 3. **Configuration**: read `sonar-project.properties`, `.security/policies/`
-4. **Workflow state**: `.ai-workflow/state/workflow-state.json`
+4. **Workflow state**: `${AIWF_CHANGE_ROOT}/state.yaml`
 
 ### Phase 2 — Analysis by dimension
 
@@ -32,4 +32,4 @@ Full project audit: architecture, quality, security and migration readiness.
 ### Phase 3 — Report
 
 Structured report with findings per dimension, severity, and recommended actions.
-Save to `.ai-workflow/evidence/audit/`.
+Save to `${AIWF_CHANGE_ROOT}/evidence/audit/`.

@@ -13,13 +13,15 @@ import (
 
 // Mode es la configuración de un modo de trabajo (entrada de modes.json).
 type Mode struct {
-	Description    string   `json:"description"`
-	Combo          string   `json:"combo"`
-	PermissionMode string   `json:"permissionMode"`
-	Risk           string   `json:"risk"`
-	Contract       string   `json:"contract"`
-	GateSet        string   `json:"gateSet"`
-	Directives     []string `json:"directives"`
+	Description     string   `json:"description"`
+	Combo           string   `json:"combo"`
+	AuxiliaryCombos []string `json:"auxiliaryCombos,omitempty"`
+	CapabilityGate  bool     `json:"capabilityGate,omitempty"`
+	PermissionMode  string   `json:"permissionMode"`
+	Risk            string   `json:"risk"`
+	Contract        string   `json:"contract"`
+	GateSet         string   `json:"gateSet"`
+	Directives      []string `json:"directives"`
 }
 
 // Modes es el contenido de modes.json.
@@ -73,6 +75,15 @@ type LaunchOptions struct {
 	MCPConfig string
 	// Contract es el system prompt a anexar (--append-system-prompt).
 	Contract string
+}
+
+// ValidateLaunchRequirements evita degradar silenciosamente un modo con garantías
+// de capacidad cuando OmniRoute no está disponible.
+func ValidateLaunchRequirements(mode Mode, omniActive bool) error {
+	if mode.CapabilityGate && !omniActive {
+		return fmt.Errorf("el modo con capabilityGate requiere OmniRoute disponible")
+	}
+	return nil
 }
 
 // BuildClaudeArgs construye los argumentos de `claude` para un modo, replicando la

@@ -30,7 +30,7 @@ Default: **`agent-critical` + `free-auxiliary`**.
 4. **Present** each response labeled with its combo, with fact/inference/hypothesis marked.
 5. **Comparison table** + **Convergences** / **Divergences** / **synthesized recommendation** with confidence.
 6. **Do NOT synthesize action or edit anything** — deliver perspectives for you or the primary agent to decide.
-7. **Save** to `.ai-workflow/evidence/fusion/opinion-<timestamp>.md`.
+7. **Save** to `${AIWF_CHANGE_ROOT}/evidence/fusion/opinion-<timestamp>.md`.
 
 ## Output
 

@@ -40,14 +40,17 @@ Before ANY SDD command: `mem_search(query: "sdd-init/{project}")`. Not found →
 
 ### Artifact Store (resolve once per session, cache; pass as artifact_store.mode to every launch)
 
+`AIWF_SUBPROJECT`, `AIWF_PROJECT_ROOT`, `AIWF_KNOWLEDGE_SHARED_ROOT` and `AIWF_KNOWLEDGE_PROJECT_ROOT` are injected by the harness. Missing scope is a blocker; never infer a directory.
+
 Resolution order — NEVER ask the user:
-1. Read `.ai-workflow/openspec/config.yaml` (inline, one file). If `artifact_store: hybrid` → **force hybrid, no override possible**.
-2. No config file → check Engram availability: available → `engram`; unavailable → `none`.
+1. Read `${AIWF_PROJECT_ROOT}/project.yaml` (inline, one file). `artifactStore: hybrid` forces hybrid.
+2. Otherwise use `engram` only when Engram is available; without persistence, block SDD instead of creating unowned files.
 
 Modes:
-- **hybrid** (when config.yaml present): Engram + filesystem `.ai-workflow/openspec/`. Both always. Non-negotiable.
-- **engram**: Engram only, no files.
-- **none**: in-memory only, lost after session.
+- **hybrid**: namespaced Engram + filesystem `${AIWF_PROJECT_ROOT}/changes/{change}/`. Both always.
+- **engram**: namespaced Engram only; no files.
+
+Knowledge is read from `${AIWF_KNOWLEDGE_PROJECT_ROOT}` and `${AIWF_KNOWLEDGE_SHARED_ROOT}` by reference. A change never copies knowledge content.
 
 ### Result Contract
 Each phase returns: status, executive_summary, artifacts, next_recommended, risks, skill_resolution.
@@ -64,7 +67,7 @@ Each phase returns: status, executive_summary, artifacts, next_recommended, risk
 
 Every launch prompt touching code MUST include pre-resolved **compact rules** from the skill registry (Skill Resolver Protocol: `~/.claude/skills/_shared/skill-resolver.md`).
 
-Resolve once per session: `mem_search("skill-registry")` → `mem_get_observation(id)`; fallback `.atl/skill-registry.md`; cache Compact Rules + User Skills trigger table. No registry → warn and proceed.
+Resolve once per session: `mem_search("skill-registry")` → `mem_get_observation(id)`; fallback `.ai-workflow/config/skill-registry.md`; cache Compact Rules + User Skills trigger table. No registry → warn and proceed.
 
 Per launch: match skills by code context (extensions/paths) AND task context; inject matching compact rule TEXT (never paths) as `## Project Standards (auto-resolved)` BEFORE task instructions.
 
@@ -78,10 +81,10 @@ Sub-agents start with NO memory; the orchestrator controls context.
 
 **SDD phases** (reads → writes): explore (nothing → explore), propose (exploration? → proposal), spec (proposal → spec), design (proposal → design), tasks (spec+design → tasks), apply (tasks+spec+design → apply-progress), verify (spec+tasks → verify-report), archive (all → archive-report). Pass artifact REFERENCES (topic keys/paths), not content; sub-agent retrieves via mem_search → mem_get_observation (search results are truncated — get_observation is REQUIRED).
 
-**Engram topic keys**: `sdd-init/{project}`; `sdd/{change}/explore|proposal|spec|design|tasks|apply-progress|verify-report|archive-report|state`.
+**Engram topic keys**: `sdd-init/{project}`; `sdd/{subproject}/{change}/explore|proposal|spec|design|tasks|apply-progress|verify-report|archive-report|state`. The subproject comes from `AIWF_SUBPROJECT`; never infer or omit it.
 
 ## Recovery
-- hybrid → mem_search → mem_get_observation; fallback read `.ai-workflow/openspec/changes/*/state.yaml`
+- hybrid → mem_search → mem_get_observation; fallback read `${AIWF_PROJECT_ROOT}/changes/*/state.yaml`
 - engram → mem_search → mem_get_observation
 - none → state not persisted — explain to user
 

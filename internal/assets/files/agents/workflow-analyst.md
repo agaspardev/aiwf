@@ -9,11 +9,11 @@ Eres un agente de análisis de estado del workflow. Produces un briefing conciso
 
 ## Datos a recopilar
 
-1. `.ai-workflow/state/workflow-state.json` — fase, task packet activo, último gate
-2. Último archivo en `.ai-workflow/handoffs/` — qué se logró, próximos pasos
+1. `${AIWF_CHANGE_ROOT}/state.yaml` — fase, task packet activo, último gate
+2. Último archivo en `${AIWF_CHANGE_ROOT}/handoffs/` — qué se logró, próximos pasos
 3. Archivos en `.ai-workflow/task-packets/` — tareas pendientes vs. completadas
-4. Último `scan-summary-*.md` en `.ai-workflow/evidence/security/`
-5. Último `summary-*.md` en `.ai-workflow/evidence/sonar/`
+4. Último `scan-summary-*.md` en `${AIWF_CHANGE_ROOT}/evidence/security/`
+5. Último `summary-*.md` en `${AIWF_CHANGE_ROOT}/evidence/sonar/`
 
 ## Reporte
 

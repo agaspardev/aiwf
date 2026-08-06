@@ -1,40 +1,54 @@
-// Package state lee el estado del workflow de un proyecto
-// (.ai-workflow/state/workflow-state.json), usado por `aiwf estado`.
+// Package state reads SDD state scoped to one change.
 package state
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
+
+	"gopkg.in/yaml.v3"
+
+	"github.com/agaspardev/aiwf/internal/workspace"
 )
 
-// RelPath es la ubicación del estado relativa a la raíz del proyecto.
-const RelPath = ".ai-workflow/state/workflow-state.json"
+const FileName = "state.yaml"
 
-// State refleja workflow-state.json. Las listas de tareas se guardan sin interpretar
-// (solo se cuentan).
-type State struct {
-	Project        string            `json:"project"`
-	Phase          string            `json:"phase"`
-	ActiveTasks    []json.RawMessage `json:"activeTasks"`
-	CompletedTasks []json.RawMessage `json:"completedTasks"`
-	BlockedTasks   []json.RawMessage `json:"blockedTasks"`
-	NextAction     string            `json:"nextAction"`
-}
+type State = workspace.ChangeState
 
-// Load lee el estado del workflow desde dir. El segundo valor es false si no existe.
-func Load(dir string) (*State, bool, error) {
-	p := filepath.Join(dir, filepath.FromSlash(RelPath))
-	data, err := os.ReadFile(p)
+// Load reads state.yaml from a resolved change directory.
+func Load(changeDir string) (*State, bool, error) {
+	data, err := os.ReadFile(filepath.Join(changeDir, FileName))
 	if os.IsNotExist(err) {
 		return nil, false, nil
 	}
 	if err != nil {
 		return nil, false, err
 	}
-	var s State
-	if err := json.Unmarshal(data, &s); err != nil {
+	var state State
+	if err := yaml.Unmarshal(data, &state); err != nil {
 		return nil, false, err
 	}
-	return &s, true, nil
+	if err := state.Validate(); err != nil {
+		return nil, false, err
+	}
+	return &state, true, nil
+}
+
+// ListChanges returns non-archive change directories in deterministic order.
+func ListChanges(changesDir string) ([]string, error) {
+	entries, err := os.ReadDir(changesDir)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	changes := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() && entry.Name() != "archive" {
+			changes = append(changes, entry.Name())
+		}
+	}
+	sort.Strings(changes)
+	return changes, nil
 }

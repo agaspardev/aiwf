@@ -54,12 +54,15 @@ type Result struct {
 	ArchivedPrev     string // versión previa archivada (update mode), si hubo cambio
 }
 
-// Generate ejecuta el análisis y escribe los artefactos. mode: "full" | "update".
-func Generate(root, mode string, synthesize bool) (*Report, *Result, error) {
-	knowledge := filepath.Join(root, ".claude", "knowledge")
+// Generate ejecuta el análisis y escribe conocimiento durable y evidencia en
+// destinos explícitos. El caller resuelve ownership; docgen no infiere contexto.
+func Generate(root, knowledge, evidence, mode string, synthesize bool) (*Report, *Result, error) {
+	if knowledge == "" || evidence == "" {
+		return nil, nil, fmt.Errorf("knowledge y evidence son obligatorios")
+	}
 	history := filepath.Join(knowledge, "history")
-	evidence := filepath.Join(root, ".ai-workflow", "evidence", "document")
-	for _, d := range []string{knowledge, history, evidence} {
+	documentEvidence := filepath.Join(evidence, "document")
+	for _, d := range []string{knowledge, history, documentEvidence} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			return nil, nil, err
 		}
@@ -67,7 +70,10 @@ func Generate(root, mode string, synthesize bool) (*Report, *Result, error) {
 	ts := time.Now().Format("20060102-150405")
 	today := time.Now().Format("2006-01-02")
 
-	files := collectFiles(root)
+	files, err := collectFiles(root)
+	if err != nil {
+		return nil, nil, fmt.Errorf("collecting files: %w", err)
+	}
 	rep := &Report{
 		GeneratedAt:  time.Now().Format(time.RFC3339),
 		Project:      filepath.Base(root),
@@ -93,7 +99,7 @@ func Generate(root, mode string, synthesize bool) (*Report, *Result, error) {
 	if err != nil {
 		return rep, nil, err
 	}
-	res.ReportPath = filepath.Join(evidence, "report-"+ts+".json")
+	res.ReportPath = filepath.Join(documentEvidence, "report-"+ts+".json")
 	if err := os.WriteFile(res.ReportPath, data, 0o644); err != nil {
 		return rep, nil, err
 	}
@@ -111,7 +117,9 @@ func Generate(root, mode string, synthesize bool) (*Report, *Result, error) {
 		if prev, err := os.ReadFile(res.ArchitecturePath); err == nil {
 			if stripFrontmatter(string(prev)) != stripFrontmatter(newArch) {
 				archived := filepath.Join(history, "ARCHITECTURE-"+ts+".md")
-				_ = os.WriteFile(archived, prev, 0o644)
+				if err := os.WriteFile(archived, prev, 0o644); err != nil {
+					return rep, res, fmt.Errorf("archiving previous ARCHITECTURE.md: %w", err)
+				}
 				newArch = strings.Replace(newArch, "supersedes: []",
 					"supersedes: [history/ARCHITECTURE-"+ts+".md]", 1)
 				res.ArchivedPrev = archived
@@ -172,14 +180,14 @@ var excludedDirs = map[string]bool{
 	".ai-workflow": true, "coverage": true, "target": true, "bin": true, "obj": true,
 }
 
-func collectFiles(root string) []string {
+func collectFiles(root string) ([]string, error) {
 	if isGitRepo(root) {
 		if out := runGit(root, "ls-files"); out != "" {
-			return strings.Split(out, "\n")
+			return strings.Split(out, "\n"), nil
 		}
 	}
 	var files []string
-	_ = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
@@ -193,7 +201,10 @@ func collectFiles(root string) []string {
 		files = append(files, filepath.ToSlash(rel))
 		return nil
 	})
-	return files
+	if err != nil {
+		return nil, err
+	}
+	return files, nil
 }
 
 func byExtension(files []string, top int) []ExtCount {

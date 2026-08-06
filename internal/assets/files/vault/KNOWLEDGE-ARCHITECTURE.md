@@ -3,7 +3,7 @@
 ## Decisión canónica
 
 La arquitectura es **configurable por instancia**. Cada instalador define sus propios vaultPaths
-en `.ai-workflow/env/vault-config.local.json`. No hay rutas absolutas en el repositorio distribuible.
+en `.ai-workflow/config/local/vault-config.local.json`. No hay rutas absolutas en el repositorio distribuible.
 
 ## Estructura recomendada (ejemplo)
 
@@ -33,7 +33,7 @@ en `.ai-workflow/env/vault-config.local.json`. No hay rutas absolutas en el repo
 
 ## Configuración por instancia
 
-Completar `.ai-workflow/env/vault-config.local.json` en cada máquina:
+Completar `.ai-workflow/config/local/vault-config.local.json` en cada máquina:
 
 ```json
 {

@@ -40,7 +40,7 @@ func LoadConfig(projectRoot string) Config {
 	cfg := Config{Host: "http://localhost:9000"}
 	tokenVar := "SONAR_TOKEN"
 
-	vcPath := filepath.Join(projectRoot, ".ai-workflow", "env", "vault-config.local.json")
+	vcPath := filepath.Join(projectRoot, ".ai-workflow", "config", "local", "vault-config.local.json")
 	if data, err := os.ReadFile(vcPath); err == nil {
 		var vc vaultConfig
 		if json.Unmarshal(data, &vc) == nil {
@@ -65,7 +65,7 @@ func resolveToken(projectRoot, tokenVar string) string {
 	if v := os.Getenv(tokenVar); v != "" {
 		return v
 	}
-	data, err := os.ReadFile(filepath.Join(projectRoot, ".ai-workflow", "env", ".env.local"))
+	data, err := os.ReadFile(filepath.Join(projectRoot, ".ai-workflow", "config", "local", "env.local"))
 	if err != nil {
 		return ""
 	}
@@ -191,13 +191,20 @@ var runScanner = func(args ...string) int {
 	return 0
 }
 
-// Scan ejecuta sonar-scanner (full = análisis completo; si no, incremental sobre main).
-func (c Config) Scan(full bool, sources string) int {
+// Scan ejecuta sonar-scanner y dirige su metadata al evidence owner explícito.
+func (c Config) Scan(full bool, sources, reportsDir string) int {
+	if reportsDir == "" {
+		return -1
+	}
+	if err := os.MkdirAll(reportsDir, 0o755); err != nil {
+		return -1
+	}
 	args := []string{
 		"-Dsonar.projectKey=" + c.ProjectKey,
 		"-Dsonar.sources=" + sources,
 		"-Dsonar.host.url=" + c.Host,
 		"-Dsonar.token=" + c.Token,
+		"-Dsonar.scanner.metadataFilePath=" + filepath.Join(reportsDir, "report-task.txt"),
 	}
 	if !full {
 		args = append(args, "-Dsonar.newCode.referenceBranch=main")

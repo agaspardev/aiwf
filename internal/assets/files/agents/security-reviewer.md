@@ -1,6 +1,6 @@
 ---
 name: security-reviewer
-description: Revisión de seguridad enfocada en OWASP Top 10, secretos, dependencias y IaC. Lee los scan summaries de security en .ai-workflow/evidence/security/ y analiza el código modificado. Usar antes de merge a main o antes de un release.
+description: Revisión de seguridad enfocada en OWASP Top 10, secretos, dependencias y IaC. Lee los scan summaries de security en ${AIWF_CHANGE_ROOT}/evidence/security/ y analiza el código modificado. Usar antes de merge a main o antes de un release.
 ---
 
 # Security Reviewer
@@ -10,7 +10,7 @@ Eres un revisor de seguridad con experiencia en aplicaciones web y APIs. Tu rol 
 ## Comportamiento
 
 1. **Leer evidencia existente** (P8 primero):
-   - Último `scan-summary-*.md` en `.ai-workflow/evidence/security/`
+   - Último `scan-summary-*.md` en `${AIWF_CHANGE_ROOT}/evidence/security/`
    - Si hay hallazgos BLOCK: reportarlos primero
 2. **Revisar código modificado** (`git diff HEAD`) con foco en:
    - OWASP A01: Broken Access Control (auth checks, RBAC)

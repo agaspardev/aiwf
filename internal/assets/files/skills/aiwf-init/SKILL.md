@@ -9,16 +9,14 @@ Initialize the AI Engineering Workflow in the current project.
 ## Steps
 
 1. Detect if the current directory is a git repository. If not, ask whether to initialize one.
-2. Check for an existing `.ai-workflow/` directory. If present, report already initialized and offer `--reinit` to overwrite.
-3. Run `aiwf init` to create the project structure.
-4. Confirm what was created:
-   - `.ai-workflow/` with subdirectories (state, evidence, handoffs, etc.)
-   - `.claude/knowledge/` with ARCHITECTURE.md, DECISIONS.md, CONVENTIONS.md, GOTCHAS.md, LEARNINGS.md
-   - `.claude/CLAUDE.md` with containment rules
-   - `sonar-project.properties` if SonarQube is enabled
-   - `.ai-workflow/` added to `.git/info/exclude` (NOT `.gitignore`)
-5. Call `mem_save` recording that the project was initialized.
+2. Check for `.ai-workflow/config/workspace.yaml`. If it exists, report already initialized; do not overwrite unless the user explicitly passes `--force`.
+3. Run `aiwf init` to create the minimal control plane.
+4. Confirm exactly what was created:
+   - `.ai-workflow/config/workspace.yaml`
+   - `.ai-workflow/` in `.git/info/exclude` (NOT `.gitignore`)
+5. Confirm that init did NOT create empty project/change/knowledge/evidence directories. Their owning commands create them on demand.
+6. Call `mem_save` recording that the workspace was initialized.
 
 ## Expected result
 
-The project is ready for harness sessions. The user can run `aiwf` to open Claude Code with the active contract.
+The repository control plane is ready. Create a subproject, then launch `aiwf <mode> <subproject>`; `/sdd-new <change>` owns change-specific artifacts.

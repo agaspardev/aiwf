@@ -87,8 +87,8 @@ Extensiones dominantes: %s
 
 ## Cómo profundizar (progressive disclosure — buscar barato, profundizar caro)
 1. Este context-pack (índice).
-2. `+"`.claude/knowledge/ARCHITECTURE.md`"+` (detalle + evolución).
-3. `+"`.ai-workflow/evidence/document/report-*.json`"+` (reporte crudo completo).
+2. `+"`ARCHITECTURE.md`"+` del knowledge scope explícito (detalle + evolución).
+3. `+"`evidence/document/report-*.json`"+` del change owner (reporte crudo completo).
 4. CodeGraph / grep para símbolos puntuales.
 `,
 		rep.Project, today, today, rep.Project, today, rep.CodeGraph,

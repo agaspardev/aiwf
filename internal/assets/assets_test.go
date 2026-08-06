@@ -1,6 +1,7 @@
 package assets
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/agaspardev/aiwf/internal/overlay"
@@ -43,6 +44,47 @@ func TestBuildEntries(t *testing.T) {
 	for _, e := range entries {
 		if len(e.Path) == 0 || e.Path[0] == '/' {
 			t.Errorf("path inválido: %q", e.Path)
+		}
+	}
+}
+
+func TestAssetsDoNotReferenceLegacyArtifactRoots(t *testing.T) {
+	forbidden := []string{
+		".claude/knowledge",
+		".ai-workflow/openspec",
+		".ai-workflow/state/",
+		".ai-workflow/notes/",
+		".ai-workflow/handoffs/",
+		".ai-workflow/evidence/",
+		".ai-workflow/reports/",
+		".ai-workflow/scratch/",
+		".atl/",
+	}
+	entries, err := BuildEntries()
+	if err != nil {
+		t.Fatalf("BuildEntries: %v", err)
+	}
+	for _, entry := range entries {
+		content := string(entry.Payload)
+		for _, legacy := range forbidden {
+			if strings.Contains(content, legacy) {
+				t.Errorf("asset %s referencia ruta legacy %q", entry.Path, legacy)
+			}
+		}
+	}
+}
+
+func TestAssetsUseChangeRootForGeneratedOutputs(t *testing.T) {
+	entries, err := BuildEntries()
+	if err != nil {
+		t.Fatalf("BuildEntries: %v", err)
+	}
+	for _, entry := range entries {
+		content := string(entry.Payload)
+		for _, output := range []string{"evidence/", "reports/", "handoffs/", "notes/", "scratch/"} {
+			if strings.Contains(content, output) && !strings.Contains(content, "${AIWF_CHANGE_ROOT}/"+output) {
+				t.Errorf("asset %s menciona %s sin AIWF_CHANGE_ROOT", entry.Path, output)
+			}
 		}
 	}
 }

@@ -2,6 +2,8 @@ package omniroute
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -76,5 +78,42 @@ func TestGuidanceNuncaExponeKey(t *testing.T) {
 		if strings.Contains(line, secret) {
 			t.Fatalf("Guidance filtró la API key en %q", line)
 		}
+	}
+}
+
+func TestListCombosReturnsCapabilityDefinitions(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/combos" {
+			http.NotFound(w, r)
+			return
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer test-key" {
+			t.Fatalf("Authorization = %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"combos":[{"name":"gpt-agent","models":[{"model":"cx/gpt-5.6-sol"},{"model":"cx/gpt-5.6-sol-high"}]}]}`))
+	}))
+	defer server.Close()
+
+	combos, err := ListCombos(context.Background(), server.URL, "test-key")
+	if err != nil {
+		t.Fatalf("ListCombos: %v", err)
+	}
+	if len(combos) != 1 || combos[0].Name != "gpt-agent" {
+		t.Fatalf("combos = %+v", combos)
+	}
+	if got := strings.Join(combos[0].Models, ","); got != "cx/gpt-5.6-sol,cx/gpt-5.6-sol-high" {
+		t.Fatalf("models = %q", got)
+	}
+}
+
+func TestListCombosRejectsNonSuccessStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "nope", http.StatusBadGateway)
+	}))
+	defer server.Close()
+
+	if _, err := ListCombos(context.Background(), server.URL, "test-key"); err == nil || !strings.Contains(err.Error(), "status 502") {
+		t.Fatalf("ListCombos error = %v", err)
 	}
 }

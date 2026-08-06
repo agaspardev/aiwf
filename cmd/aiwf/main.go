@@ -31,8 +31,10 @@ func main() {
 		os.Exit(uninstall())
 	case "init":
 		os.Exit(initCmd(os.Args[2:]))
+	case "project":
+		os.Exit(projectCmd(os.Args[2:]))
 	case "estado":
-		os.Exit(estado())
+		os.Exit(estado(os.Args[2:]))
 	case "diagnostico":
 		os.Exit(diagnostico())
 	case "document", "documentar":
@@ -49,29 +51,46 @@ func main() {
 		os.Exit(securityCmd(os.Args[2:]))
 	case "sonar":
 		os.Exit(sonarCmd(os.Args[2:]))
+	case "migrate":
+		os.Exit(migrateCmd(os.Args[2:]))
 	case "prueba":
-		// smoke test: modo por defecto en dry-run.
-		os.Exit(runMode("", true, false))
+		fmt.Fprintln(os.Stderr, "uso: aiwf <modo> <subproject> --dry-run")
+		os.Exit(2)
 	case "-h", "--help", "help", "ayuda":
 		usage()
 	default:
-		// Cualquier otro token se interpreta como un modo de trabajo (como `ai <modo>`).
-		dryRun, skipPerms := parseRunFlags(os.Args[2:])
-		os.Exit(runMode(os.Args[1], dryRun, skipPerms))
+		// Cualquier otro token se interpreta como un modo de trabajo.
+		subproject, dryRun, skipPerms, err := parseRunArgs(os.Args[2:])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(2)
+		}
+		os.Exit(runMode(os.Args[1], subproject, dryRun, skipPerms))
 	}
 }
 
-// parseRunFlags extrae banderas del lanzamiento de un modo.
-func parseRunFlags(args []string) (dryRun, skipPerms bool) {
-	for _, a := range args {
-		switch a {
+// parseRunArgs extrae el subproyecto obligatorio y banderas de sesión.
+func parseRunArgs(args []string) (subproject string, dryRun, skipPerms bool, err error) {
+	for _, arg := range args {
+		switch arg {
 		case "--dry-run", "--dryrun":
 			dryRun = true
 		case "--skip-perms", "--skip-permisos":
 			skipPerms = true
+		default:
+			if len(arg) > 0 && arg[0] == '-' {
+				return "", false, false, fmt.Errorf("bandera de sesión desconocida: %s", arg)
+			}
+			if subproject != "" {
+				return "", false, false, fmt.Errorf("uso: aiwf <modo> <subproject> [--dry-run] [--skip-perms]")
+			}
+			subproject = arg
 		}
 	}
-	return
+	if subproject == "" {
+		return "", false, false, fmt.Errorf("falta subproject: uso aiwf <modo> <subproject>")
+	}
+	return subproject, dryRun, skipPerms, nil
 }
 
 func usage() {
@@ -85,16 +104,17 @@ Instalación:
 
 Sesiones (modos de trabajo):
   aiwf                 Abre una sesión en el modo por defecto
-  aiwf <modo>          Abre una sesión en el modo indicado
-                       (automatico, codigo, arreglar, arquitectura,
-                        documentos, profundo, seguridad, gratis)
-  aiwf <modo> --dry-run     Muestra los argumentos y el contract sin lanzar
-  aiwf <modo> --skip-perms  Usa --dangerously-skip-permissions
-  aiwf prueba          Smoke test del harness (dry-run del modo por defecto)
+  aiwf <modo> <subproject>          Abre una sesión aislada por subproyecto
+                                    (automatico, codigo, arreglar, arquitectura,
+                                     documentos, profundo, seguridad, gratis, gpt,
+                                     fast-fix, deep-work, research y auxiliares)
+  aiwf <modo> <subproject> --dry-run     Muestra argumentos y contract sin lanzar
+  aiwf <modo> <subproject> --skip-perms  Usa --dangerously-skip-permissions
 
 Herramientas:
-  aiwf init [--name N] [--force]   Inicializa .ai-workflow/ en el proyecto actual
-  aiwf estado          Estado del workflow del proyecto actual
+  aiwf init [--name N] [--force]   Inicializa control plane mínimo .ai-workflow/
+  aiwf project new <subproject>    Crea únicamente el manifest del subproyecto
+  aiwf estado <subproject> [--change C]  Estado scoped del workflow
   aiwf diagnostico     Verifica el toolchain operativo (claude, omniroute, ...)
   aiwf document [full|update] [-s]  Documenta el proyecto (determinista, cero tokens)
   aiwf gate <c.json>   Valida un phase-contract contra el repo (determinista)
@@ -102,6 +122,7 @@ Herramientas:
   aiwf gemini "..."    Consulta al modelo auxiliar (Gemini) vía OmniRoute
   aiwf security [scope] Pipeline AppSec: secrets|sast|sca|sbom|all (default all)
   aiwf sonar [modo]    SonarQube: gate|issues|changed|full (default gate)
+  aiwf migrate layout --subproject S  Dry-run de migración legacy asistida
 `)
 }
 
