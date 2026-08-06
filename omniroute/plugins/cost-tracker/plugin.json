@@ -1,0 +1,25 @@
+{
+  "name": "cost-tracker",
+  "version": "1.0.0",
+  "description": "Track token costs per request and per model",
+  "author": "local-operator",
+  "license": "MIT",
+  "main": "index.js",
+  "tags": ["analytics", "cost"],
+  "hooks": {
+    "onResponse": true
+  },
+  "enabledByDefault": false,
+  "configSchema": {
+    "rates": {
+      "type": "string",
+      "default": "{}",
+      "description": "JSON map of model -> input/output cost per 1K tokens, e.g. {\"claude-sonnet-4\":[3,15]}"
+    },
+    "logFile": {
+      "type": "string",
+      "default": "",
+      "description": "Path to write CSV cost log (empty = console only)"
+    }
+  }
+}

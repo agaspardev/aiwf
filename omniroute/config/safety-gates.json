@@ -1,0 +1,27 @@
+{
+  "_comment": "Safety gates — escritos directo en SQLite (NO están en el schema PUT)",
+  "_instructions": "Ejecutar setup-safety-gates.mjs para escribir estos valores en storage.sqlite. Requiere reiniciar OmniRoute después.",
+  "fidelityGate": {
+    "enabled": true,
+    "minTokenSurvivalPercent": 95,
+    "minJsonKeyPercent": 90,
+    "checkNumericIntegrity": true,
+    "checkDiffHunks": true
+  },
+  "riskGate": {
+    "enabled": true,
+    "categories": [
+      "stack_trace",
+      "private_key",
+      "secret_assignment",
+      "k8s_secret",
+      "db_migration",
+      "legal"
+    ]
+  },
+  "pipelineCircuitBreaker": {
+    "enabled": true,
+    "failureThreshold": 3,
+    "cooldownMs": 30000
+  }
+}

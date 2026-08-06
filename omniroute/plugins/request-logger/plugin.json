@@ -1,0 +1,30 @@
+{
+  "name": "request-logger",
+  "version": "1.0.0",
+  "description": "Logs all requests and responses with timing",
+  "author": "local-operator",
+  "license": "MIT",
+  "main": "index.js",
+  "tags": ["logging", "debugging"],
+  "hooks": {
+    "onRequest": true,
+    "onResponse": true,
+    "onError": true
+  },
+  "enabledByDefault": false,
+  "requires": {
+    "permissions": ["network"]
+  },
+  "configSchema": {
+    "webhookUrl": {
+      "type": "string",
+      "default": "",
+      "description": "Optional URL to POST log entries as JSON"
+    },
+    "logBody": {
+      "type": "boolean",
+      "default": false,
+      "description": "Include request body in log output"
+    }
+  }
+}

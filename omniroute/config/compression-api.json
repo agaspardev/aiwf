@@ -1,0 +1,61 @@
+{
+  "_comment": "Payload listo para enviar via PUT /api/settings/compression",
+  "_instructions": "curl -X PUT http://localhost:20128/api/settings/compression -H 'Authorization: Bearer <API_KEY>' -H 'Content-Type: application/json' -d @compression-api.json",
+  "_warning": "Si envías engines parcial, SOBRESCRIBE todo el objeto engines. Siempre enviar completo.",
+  "stackedPipeline": [
+    { "engine": "session-dedup" },
+    { "engine": "rtk", "intensity": "standard" },
+    { "engine": "caveman", "intensity": "lite" },
+    { "engine": "headroom" },
+    { "engine": "ultra" }
+  ],
+  "engines": {
+    "session-dedup": { "enabled": true },
+    "ccr": { "enabled": false },
+    "lite": { "enabled": false },
+    "rtk": { "enabled": true },
+    "headroom": { "enabled": true },
+    "relevance": { "enabled": false },
+    "caveman": { "enabled": true },
+    "aggressive": { "enabled": false },
+    "llmlingua": { "enabled": false },
+    "ultra": { "enabled": true },
+    "omniglyph": { "enabled": false }
+  },
+  "ultraEngine": "slm",
+  "ultraSlmPrewarm": true,
+  "ultra": {
+    "enabled": true,
+    "compressionRate": 0.5,
+    "minScoreThreshold": 0.3,
+    "slmFallbackToAggressive": true,
+    "maxTokensPerMessage": 0
+  },
+  "cavemanOutputMode": {
+    "enabled": true,
+    "intensity": "lite",
+    "autoClarity": true
+  },
+  "rtkConfig": {
+    "enabled": true,
+    "intensity": "standard",
+    "applyToToolResults": true,
+    "applyToCodeBlocks": true,
+    "applyToAssistantMessages": false,
+    "enabledFilters": [],
+    "disabledFilters": [],
+    "maxLinesPerResult": 120,
+    "maxCharsPerResult": 12000,
+    "deduplicateThreshold": 2,
+    "customFiltersEnabled": true,
+    "trustProjectFilters": false,
+    "rawOutputRetention": "failures",
+    "rawOutputMaxBytes": 1048576,
+    "enableGrouping": true,
+    "groupingThreshold": 3,
+    "stripCodeComments": true,
+    "preserveDocstrings": true,
+    "enableRenderers": false
+  },
+  "preserveSystemPromptMode": "whenNoCache"
+}

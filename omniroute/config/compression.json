@@ -1,0 +1,107 @@
+{
+  "_comment": "Configuración completa de compresión de OmniRoute — 2026-07-27",
+  "_instructions": "Este JSON representa TODA la configuración de compresión. Aplicar via PUT /api/settings/compression. NOTA: fidelityGate, riskGate y pipelineCircuitBreaker NO están en el schema PUT — ver safety-gates.json",
+  "enabled": true,
+  "defaultMode": "stacked",
+  "autoTriggerMode": "lite",
+  "autoTriggerTokens": 16000,
+  "cacheMinutes": 5,
+  "preserveSystemPrompt": true,
+  "preserveSystemPromptMode": "whenNoCache",
+  "mcpDescriptionCompressionEnabled": true,
+  "comboOverrides": {},
+  "compressionComboId": null,
+  "stackedPipeline": [
+    { "engine": "session-dedup" },
+    { "engine": "rtk", "intensity": "standard" },
+    { "engine": "caveman", "intensity": "lite" },
+    { "engine": "headroom" },
+    { "engine": "ultra" }
+  ],
+  "engines": {
+    "session-dedup": { "enabled": true },
+    "ccr": { "enabled": false },
+    "lite": { "enabled": false },
+    "rtk": { "enabled": true, "level": "standard" },
+    "headroom": { "enabled": true },
+    "relevance": { "enabled": false },
+    "caveman": { "enabled": true, "level": "lite" },
+    "aggressive": { "enabled": false },
+    "llmlingua": { "enabled": false },
+    "ultra": { "enabled": true },
+    "omniglyph": { "enabled": false }
+  },
+  "enginesExplicit": true,
+  "activeComboId": null,
+  "ultraEngine": "slm",
+  "ultraSlmPrewarm": true,
+  "cavemanConfig": {
+    "enabled": true,
+    "compressRoles": ["user", "assistant"],
+    "skipRules": [],
+    "minMessageLength": 30,
+    "preservePatterns": [],
+    "intensity": "lite"
+  },
+  "cavemanOutputMode": {
+    "enabled": true,
+    "intensity": "lite",
+    "autoClarity": true
+  },
+  "outputStyles": [],
+  "rtkConfig": {
+    "enabled": true,
+    "intensity": "standard",
+    "applyToToolResults": true,
+    "applyToCodeBlocks": true,
+    "applyToAssistantMessages": false,
+    "enabledFilters": [],
+    "disabledFilters": [],
+    "maxLinesPerResult": 120,
+    "maxCharsPerResult": 12000,
+    "deduplicateThreshold": 2,
+    "customFiltersEnabled": true,
+    "trustProjectFilters": false,
+    "rawOutputRetention": "failures",
+    "rawOutputMaxBytes": 1048576,
+    "enableGrouping": true,
+    "groupingThreshold": 3,
+    "stripCodeComments": true,
+    "preserveDocstrings": true,
+    "enableRenderers": false
+  },
+  "languageConfig": {
+    "enabled": true,
+    "defaultLanguage": "es",
+    "autoDetect": true,
+    "enabledPacks": ["en", "es"]
+  },
+  "aggressive": {
+    "thresholds": {
+      "fullSummary": 5,
+      "moderate": 3,
+      "light": 2,
+      "verbatim": 2
+    },
+    "toolStrategies": {
+      "fileContent": true,
+      "grepSearch": true,
+      "shellOutput": true,
+      "json": true,
+      "errorMessage": true
+    },
+    "summarizerEnabled": true,
+    "maxTokensPerMessage": 2048,
+    "minSavingsThreshold": 0.05
+  },
+  "ultra": {
+    "enabled": true,
+    "compressionRate": 0.5,
+    "minScoreThreshold": 0.3,
+    "slmFallbackToAggressive": true,
+    "maxTokensPerMessage": 0
+  },
+  "contextEditing": {
+    "enabled": true
+  }
+}

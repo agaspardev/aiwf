@@ -27,8 +27,17 @@ Thumbs.db
 node_modules/
 __pycache__/
 
-# ─── OmniRoute runtime checkout (local; NOT aiwf source) ───
-# Runtime/config del propio OmniRoute (proxy hub). aiwf lo instala vía
-# `npm/pnpm install -g omniroute`, no desde este dir. Puede contener API keys.
-# Para portabilidad real: curar config base en internal/assets/files/omniroute/.
-/omniroute/
+# ─── OmniRoute: docs/scripts/plugins versionados (2026-08-06) ───
+# La carpeta omniroute/ SÍ se versiona: contiene documentación, scripts DR y
+# plugins, sin secretos. Solo se ignoran los archivos sensibles (env real,
+# snapshots con credenciales, backups) que viven en ~/.omniroute/, no aquí.
+# Snapshot DR real (DB + .env): ~/.omniroute/dr-snapshots/ (fuera de git).
+omniroute/**/*.env
+omniroute/**/.env
+omniroute/**/dr-snapshots/
+omniroute/**/snapshots/
+omniroute/**/backups/
+omniroute/**/backup-*.json
+omniroute/**/*.sqlite
+omniroute/**/*.sqlite-wal
+omniroute/**/*.sqlite-shm

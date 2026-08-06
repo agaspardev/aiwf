@@ -1,0 +1,30 @@
+{
+  "name": "rate-limiter",
+  "version": "1.0.0",
+  "description": "Per-model rate limiting with sliding window",
+  "author": "local-operator",
+  "license": "MIT",
+  "main": "index.js",
+  "tags": ["rate-limit", "security"],
+  "hooks": {
+    "onRequest": true
+  },
+  "enabledByDefault": false,
+  "configSchema": {
+    "windowMs": {
+      "type": "number",
+      "default": 60000,
+      "description": "Sliding window in milliseconds"
+    },
+    "maxRequests": {
+      "type": "number",
+      "default": 60,
+      "description": "Max requests per window per model"
+    },
+    "maxPerProvider": {
+      "type": "number",
+      "default": 200,
+      "description": "Max requests per window per provider"
+    }
+  }
+}
