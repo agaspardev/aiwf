@@ -17,6 +17,7 @@ internal/bootstrap	75
 internal/docgen	75
 internal/state	80
 internal/overlay	80
+internal/report	85
 internal/skillreg	85
 internal/gatekeeper	85
 internal/harness	85
