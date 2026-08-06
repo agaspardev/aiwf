@@ -15,8 +15,13 @@ import (
 	"strings"
 )
 
-// DefaultURL es el endpoint local por defecto de OmniRoute.
+// DefaultURL es el endpoint local por defecto de OmniRoute (valor canónico,
+// usado por callers externos y en el texto de guía).
 const DefaultURL = "http://127.0.0.1:20128"
+
+// baseURL es el endpoint efectivo de las llamadas HTTP internas. Es un seam:
+// los tests lo sobreescriben para apuntar a un httptest.Server.
+var baseURL = DefaultURL
 
 // ReadKey devuelve OMNIROUTE_API_KEY desde ~/.omniroute/.env, o "" si no está.
 func ReadKey() string {
@@ -71,7 +76,7 @@ func Consult(ctx context.Context, prompt, combo string, maxTokens int) (string, 
 	if err != nil {
 		return "", err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, DefaultURL+"/v1/messages", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/v1/messages", bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}

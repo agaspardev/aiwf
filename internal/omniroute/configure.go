@@ -40,7 +40,7 @@ var (
 	pingServer = func(ctx context.Context) bool {
 		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 		defer cancel()
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, DefaultURL+"/", nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/", nil)
 		if err != nil {
 			return false
 		}
@@ -95,7 +95,7 @@ func CheckDetailedStatus(ctx context.Context) Detailed {
 			TotalCalls24h int `json:"totalCalls24h"`
 		} `json:"activity"`
 	}
-	if err := httpGetJSON(ctx, DefaultURL+"/api/mcp/status", apiKey, &mcp); err == nil {
+	if err := httpGetJSON(ctx, baseURL+"/api/mcp/status", apiKey, &mcp); err == nil {
 		d.MCPOnline = mcp.Online
 		d.MCPTransport = mcp.Transport
 		d.TotalCalls24h = mcp.Activity.TotalCalls24h
@@ -106,7 +106,7 @@ func CheckDetailedStatus(ctx context.Context) Detailed {
 		Enabled     bool   `json:"enabled"`
 		DefaultMode string `json:"defaultMode"`
 	}
-	if err := httpGetJSON(ctx, DefaultURL+"/api/settings/compression", apiKey, &comp); err == nil {
+	if err := httpGetJSON(ctx, baseURL+"/api/settings/compression", apiKey, &comp); err == nil {
 		d.CompressionOn = comp.Enabled
 		d.CompressionMode = comp.DefaultMode
 	}
@@ -115,7 +115,7 @@ func CheckDetailedStatus(ctx context.Context) Detailed {
 	var provs struct {
 		Connections []any `json:"connections"`
 	}
-	if err := httpGetJSON(ctx, DefaultURL+"/api/providers", apiKey, &provs); err == nil {
+	if err := httpGetJSON(ctx, baseURL+"/api/providers", apiKey, &provs); err == nil {
 		d.ProviderCount = len(provs.Connections)
 		for _, c := range provs.Connections {
 			if m, ok := c.(map[string]any); ok {
@@ -132,7 +132,7 @@ func CheckDetailedStatus(ctx context.Context) Detailed {
 		Misses int `json:"misses"`
 		Size   int `json:"size"`
 	}
-	if err := httpGetJSON(ctx, DefaultURL+"/api/cache/stats", apiKey, &cache); err == nil {
+	if err := httpGetJSON(ctx, baseURL+"/api/cache/stats", apiKey, &cache); err == nil {
 		d.CacheHits = cache.Hits
 		d.CacheMisses = cache.Misses
 		d.CacheSize = cache.Size
