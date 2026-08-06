@@ -1,0 +1,32 @@
+#!/usr/bin/env sh
+# pre-commit — fast, deterministic gate. gofmt + go vet on what you are about
+# to commit. Cheap checks that catch the exact drift that bit commit 03172be
+# ("gofmt drift"). Coverage is NOT here (too slow per-commit) — it lives in
+# scripts/coverage-gate.sh, run by CI / quality-gate.
+#
+# Enable once per clone:  git config core.hooksPath scripts/hooks
+set -eu
+
+# Staged Go files (added/copied/modified), excluding deletions.
+staged=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' || true)
+if [ -z "$staged" ]; then
+  exit 0
+fi
+
+# 1) gofmt — list files that are not formatted. Deterministic, no build.
+unformatted=$(printf '%s\n' "$staged" | xargs gofmt -l 2>/dev/null || true)
+if [ -n "$unformatted" ]; then
+  echo "pre-commit: gofmt needed on:" >&2
+  printf '  %s\n' "$unformatted" >&2
+  echo "  run: gofmt -w <files>  (then re-stage)" >&2
+  exit 1
+fi
+
+# 2) go vet — static analysis (not a production build) on the whole module.
+if ! vetout=$(go vet ./... 2>&1); then
+  echo "pre-commit: go vet failed:" >&2
+  echo "$vetout" >&2
+  exit 1
+fi
+
+echo "pre-commit: gofmt + vet OK"

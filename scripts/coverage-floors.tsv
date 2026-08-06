@@ -1,0 +1,23 @@
+# package<TAB>min_coverage_percent
+# Ratchet floors: seeded from measured coverage rounded DOWN to a multiple of 5
+# (small margin so trivial fluctuation does not break CI, real regressions do).
+# Raise a floor when you raise coverage; never lower one to make CI pass.
+# cmd/aiwf is exempt (floor 0): CLI wiring, exercised via integration, not unit.
+cmd/aiwf	0
+internal/omniroute	45
+internal/sonar	45
+internal/config	55
+internal/upstream	60
+internal/migrate	65
+internal/initproj	70
+internal/security	70
+internal/assets	75
+internal/bootstrap	75
+internal/docgen	75
+internal/state	80
+internal/overlay	80
+internal/skillreg	85
+internal/gatekeeper	85
+internal/harness	85
+internal/workspace	90
+internal/diag	95
