@@ -7,7 +7,9 @@ import (
 )
 
 // ContractVersion es la versión del contrato (debe seguir a la del workflow).
-const ContractVersion = "1.0.7"
+// F1 (1.1.0): esquema de gobernanza invariante — el modo deja de declarar
+// metodología; governanceCore embebido; permission-mode derivado de capacidad.
+const ContractVersion = "1.1.0"
 
 // Gates es el contenido de quality-gates.json: gateSet -> lista de gates.
 type Gates map[string][]string
@@ -58,6 +60,9 @@ type ContractParams struct {
 	KnowledgeShared  string
 	KnowledgeProject string
 	ChangeRoot       string
+	// PermissionMode es el permiso DERIVADO de la certificación (F1/1B), para
+	// que el header lo muestre — evita que un modo caiga a supervisado en silencio.
+	PermissionMode string
 }
 
 // contractBody es el cuerpo estático del contrato (comportamiento obligatorio,
@@ -93,24 +98,38 @@ DELEGATION STOP RULES (numbers, not vibes — protect the orchestrator's context
 - Reads parallelize freely; writes never parallelize (single writer unless isolated worktrees).
 - Register each delegated task by fingerprint (phase+description); never launch the same one twice.`
 
+// governanceCore es la gobernanza INVARIANTE del workflow (F1). Un modo nunca
+// puede debilitarla — vive aquí, no en modes.json. Incluye la política de
+// auxiliares (Decisión 2): las guardas antes por-modo ahora son invariantes.
+const governanceCore = `GOVERNANCE CORE (invariant — a mode may never weaken this):
+- Classify every task before acting (trivial/small/medium/large); announce in one line, then proceed.
+- Medium/large tasks enter the SDD flow automatically; never ask the user to pick a mode to get methodology.
+- Total artifact containment: every non-source artifact lives under .ai-workflow/ (reports, evidence, scratch, notes). Never write working files outside it.
+- Code quality gates are ALWAYS the 'code' set (lint + typecheck + tests). A mode cannot select weaker gates.
+- Auxiliary combos are read-only second opinions: never delegate filesystem mutations to an auxiliary, and never delegate final verification to an auxiliary — the certified primary agent keeps both.
+- Persist significant decisions, discoveries and bugfixes to engram (mem_save); mem_session_summary is mandatory before ending.
+- P8 (code before agent): if the result can be obtained by code, do not invoke an agent.`
+
 // BuildContract construye el contract prompt completo, replicando harness.ps1.
 func BuildContract(p ContractParams) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "AI WORKFLOW CONTRACT (authoritative — version %s)\n", ContractVersion)
 	fmt.Fprintf(&b, "Instance: %s\n", p.InstanceRoot)
-	fmt.Fprintf(&b, "Mode: %s | Combo: %s | Risk: %s | Gate: %s\n",
-		p.ModeName, p.Mode.Combo, p.Mode.Risk, p.Mode.GateSet)
+	fmt.Fprintf(&b, "Mode: %s | Combo: %s | Gate: code | Permission: %s\n",
+		p.ModeName, p.Mode.Combo, p.PermissionMode)
 	fmt.Fprintf(&b, "OmniRoute: %s | SonarQube: %s\n", p.OmniStatus, p.SonarStatus)
 	fmt.Fprintf(&b, "Workspace: subproject=%s | project_root=%s\n", p.Subproject, p.ProjectRoot)
 	fmt.Fprintf(&b, "Change root: unset until /sdd-new or /sdd-continue selects one under %s\n", p.ChangeRoot)
 	fmt.Fprintf(&b, "Knowledge: shared=%s | project=%s\n\n", p.KnowledgeShared, p.KnowledgeProject)
 
+	b.WriteString(governanceCore)
+
+	b.WriteString("\n\n")
 	b.WriteString(contractBody)
 
-	b.WriteString("\n\nMODE DIRECTIVES:\n")
-	b.WriteString(bulletList(p.Mode.Directives))
+	fmt.Fprintf(&b, "\n\nMODE: %s\n", p.Mode.Description)
 
-	fmt.Fprintf(&b, "\n\nQUALITY GATES (%s):\n", p.Mode.GateSet)
+	b.WriteString("\n\nQUALITY GATES (code):\n")
 	b.WriteString(bulletList(p.Gates))
 
 	fmt.Fprintf(&b, "\n\nAIWF | mode: %s | sonar: %s | context-policy: 20pct-max",

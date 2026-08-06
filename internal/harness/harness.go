@@ -12,17 +12,19 @@ import (
 )
 
 // Mode es la configuración de un modo de trabajo (entrada de modes.json).
+// F1: el modo es un CATÁLOGO de infra negociable ({combo, aux, capabilityGate}).
+// La metodología/gobernanza (permissionMode, gateSet, risk, contract, directives)
+// NO vive aquí — es invariante (governanceCore + harness). Quitar estos campos
+// hace la invariancia estructural: el compilador impide que un modo la declare.
 type Mode struct {
 	Description     string   `json:"description"`
 	Combo           string   `json:"combo"`
 	AuxiliaryCombos []string `json:"auxiliaryCombos,omitempty"`
 	CapabilityGate  bool     `json:"capabilityGate,omitempty"`
-	PermissionMode  string   `json:"permissionMode"`
-	Risk            string   `json:"risk"`
-	Contract        string   `json:"contract"`
-	GateSet         string   `json:"gateSet"`
-	Directives      []string `json:"directives"`
 }
+
+// forbiddenModeKeys son claves de gobernanza que un modo NO puede declarar (F1).
+var forbiddenModeKeys = []string{"permissionMode", "risk", "contract", "gateSet", "directives"}
 
 // Modes es el contenido de modes.json.
 type Modes struct {
@@ -31,7 +33,8 @@ type Modes struct {
 	Modes         map[string]Mode `json:"modes"`
 }
 
-// LoadModes parsea el JSON de modes.json.
+// LoadModes parsea el JSON de modes.json y aplica el guard de invariancia (F1):
+// rechaza esquemas obsoletos (v1) y cualquier modo que declare gobernanza.
 func LoadModes(data []byte) (*Modes, error) {
 	var m Modes
 	if err := json.Unmarshal(data, &m); err != nil {
@@ -39,6 +42,23 @@ func LoadModes(data []byte) (*Modes, error) {
 	}
 	if len(m.Modes) == 0 {
 		return nil, fmt.Errorf("modes.json no define modos")
+	}
+	if m.SchemaVersion < 2 {
+		return nil, fmt.Errorf("modes.json schemaVersion %d es obsoleto: la gobernanza por-modo se eliminó en F1; re-aplicá el overlay aiwf para regenerarlo (schemaVersion 2)", m.SchemaVersion)
+	}
+	// Guard estructural: ningún modo puede declarar claves de gobernanza.
+	var probe struct {
+		Modes map[string]map[string]json.RawMessage `json:"modes"`
+	}
+	if err := json.Unmarshal(data, &probe); err != nil {
+		return nil, fmt.Errorf("modes.json inválido: %w", err)
+	}
+	for name, fields := range probe.Modes {
+		for _, k := range forbiddenModeKeys {
+			if _, present := fields[k]; present {
+				return nil, fmt.Errorf("modo %q declara %q: la gobernanza es invariante y no puede definirse por-modo (F1); eliminá esa clave", name, k)
+			}
+		}
 	}
 	return &m, nil
 }
@@ -75,6 +95,11 @@ type LaunchOptions struct {
 	MCPConfig string
 	// Contract es el system prompt a anexar (--append-system-prompt).
 	Contract string
+	// PermissionMode es el permiso DERIVADO de la certificación de capacidad
+	// (F1/1B): "acceptEdits" solo si el combo está certificado como agent con
+	// escritura local; "default" (supervisado) en caso contrario. El modo ya no
+	// lo declara — lo deriva el harness.
+	PermissionMode string
 }
 
 // ValidateLaunchRequirements evita degradar silenciosamente un modo con garantías
@@ -98,7 +123,11 @@ func BuildClaudeArgs(mode Mode, opts LaunchOptions) []string {
 	if opts.SkipPermissions {
 		args = append(args, "--dangerously-skip-permissions")
 	} else {
-		args = append(args, "--permission-mode", mode.PermissionMode)
+		permission := opts.PermissionMode
+		if permission == "" {
+			permission = "default" // fail-closed a supervisado si no se derivó
+		}
+		args = append(args, "--permission-mode", permission)
 	}
 
 	if opts.VaultDir != "" {

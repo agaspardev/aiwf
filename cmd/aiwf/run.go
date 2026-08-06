@@ -107,6 +107,9 @@ func runMode(modeName, subproject string, dryRun, skipPerms bool) int {
 		fmt.Fprintf(os.Stderr, "error: %v\n", launchErr)
 		return 1
 	}
+	// F1/1B: permission-mode DERIVADO de certificación. Sin OmniRoute no hay
+	// combos que certificar -> supervisado (fail-closed).
+	permMode := "default"
 	if omniActive {
 		capabilities, capabilitiesErr := loadCapabilities()
 		if capabilitiesErr != nil {
@@ -133,6 +136,7 @@ func runMode(modeName, subproject string, dryRun, skipPerms bool) int {
 			fmt.Fprintf(os.Stderr, "error: configuración de routing insegura:\n%s\n", harness.FormatCapabilityViolations(violations))
 			return 1
 		}
+		permMode = harness.DerivePermissionMode(mode, combos, capabilities)
 	}
 
 	contract := harness.BuildContract(harness.ContractParams{
@@ -141,12 +145,13 @@ func runMode(modeName, subproject string, dryRun, skipPerms bool) int {
 		Mode:             mode,
 		OmniStatus:       omniStatus(omniActive),
 		SonarStatus:      sonarStatus(),
-		Gates:            gates.Resolve(mode.GateSet),
+		Gates:            gates.Resolve("code"),
 		Subproject:       subproject,
 		ProjectRoot:      paths.Project,
 		KnowledgeShared:  paths.KnowledgeShared,
 		KnowledgeProject: paths.KnowledgeProject,
 		ChangeRoot:       paths.Changes,
+		PermissionMode:   permMode,
 	})
 
 	args := harness.BuildClaudeArgs(mode, harness.LaunchOptions{
@@ -155,6 +160,7 @@ func runMode(modeName, subproject string, dryRun, skipPerms bool) int {
 		VaultDir:        vaultDir,
 		MCPConfig:       mcpArg,
 		Contract:        contract,
+		PermissionMode:  permMode,
 	})
 
 	if dryRun {

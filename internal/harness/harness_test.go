@@ -8,11 +8,11 @@ import (
 )
 
 const sampleModes = `{
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "defaultMode": "automatico",
   "modes": {
-    "automatico": {"combo":"agent-auto","permissionMode":"acceptEdits","risk":"adaptive","gateSet":"code","directives":["d1","d2"]},
-    "gratis": {"combo":"free-first","permissionMode":"default","risk":"experimental","gateSet":"documentation","directives":["e1"]}
+    "automatico": {"combo":"agent-auto"},
+    "gratis": {"combo":"free-first"}
   }
 }`
 
@@ -27,7 +27,7 @@ func TestResolveMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
-	if mode.Combo != "agent-auto" || mode.PermissionMode != "acceptEdits" {
+	if mode.Combo != "agent-auto" {
 		t.Errorf("modo mal parseado: %+v", mode)
 	}
 	if _, err := m.Resolve("inexistente"); err == nil {
@@ -35,13 +35,30 @@ func TestResolveMode(t *testing.T) {
 	}
 }
 
+func TestLoadModesRejectsV1Schema(t *testing.T) {
+	_, err := LoadModes([]byte(`{"schemaVersion":1,"modes":{"x":{"combo":"c"}}}`))
+	if err == nil || !strings.Contains(err.Error(), "obsoleto") {
+		t.Fatalf("esperaba rechazo de v1, got %v", err)
+	}
+}
+
+func TestLoadModesRejectsGovernanceKeys(t *testing.T) {
+	for _, key := range []string{"permissionMode", "risk", "contract", "gateSet", "directives"} {
+		data := `{"schemaVersion":2,"modes":{"x":{"combo":"c","` + key + `":"v"}}}`
+		if _, err := LoadModes([]byte(data)); err == nil || !strings.Contains(err.Error(), key) {
+			t.Errorf("clave %q: esperaba rechazo, got %v", key, err)
+		}
+	}
+}
+
 func TestBuildClaudeArgsWithOmni(t *testing.T) {
-	mode := Mode{Combo: "agent-auto", PermissionMode: "acceptEdits"}
+	mode := Mode{Combo: "agent-auto"}
 	args := BuildClaudeArgs(mode, LaunchOptions{
-		OmniActive: true,
-		VaultDir:   "/vault",
-		MCPConfig:  "/mcp.json",
-		Contract:   "CONTRACT",
+		OmniActive:     true,
+		PermissionMode: "acceptEdits",
+		VaultDir:       "/vault",
+		MCPConfig:      "/mcp.json",
+		Contract:       "CONTRACT",
 	})
 	joined := strings.Join(args, " ")
 	for _, want := range []string{"--model agent-auto", "--permission-mode acceptEdits", "--add-dir /vault", "--mcp-config /mcp.json", "--append-system-prompt CONTRACT"} {
@@ -51,8 +68,16 @@ func TestBuildClaudeArgsWithOmni(t *testing.T) {
 	}
 }
 
+func TestBuildClaudeArgsDerivedSupervised(t *testing.T) {
+	// Sin PermissionMode derivado -> fail-closed a supervisado (default).
+	args := BuildClaudeArgs(Mode{Combo: "free-first"}, LaunchOptions{OmniActive: true, PermissionMode: "default"})
+	if !strings.Contains(strings.Join(args, " "), "--permission-mode default") {
+		t.Errorf("esperaba --permission-mode default, got %v", args)
+	}
+}
+
 func TestBuildClaudeArgsWithoutOmniAndSkipPerms(t *testing.T) {
-	mode := Mode{Combo: "agent-auto", PermissionMode: "acceptEdits"}
+	mode := Mode{Combo: "agent-auto"}
 	args := BuildClaudeArgs(mode, LaunchOptions{OmniActive: false, SkipPermissions: true})
 	joined := strings.Join(args, " ")
 	if strings.Contains(joined, "--model") {
@@ -99,20 +124,21 @@ func TestGatesResolve(t *testing.T) {
 	}
 }
 
-func TestBuildContractIncludesModeAndGates(t *testing.T) {
-	mode := Mode{Combo: "agent-auto", Risk: "adaptive", GateSet: "code", Directives: []string{"do X", "do Y"}}
+func TestBuildContractInvariantGovernance(t *testing.T) {
+	mode := Mode{Combo: "agent-auto", Description: "Flujo auto"}
 	c := BuildContract(ContractParams{
-		InstanceRoot: "/root",
-		ModeName:     "automatico",
-		Mode:         mode,
-		OmniStatus:   "ONLINE",
-		SonarStatus:  "OFFLINE (degraded)",
-		Gates:        []string{"g1", "c1"},
+		InstanceRoot:   "/root",
+		ModeName:       "automatico",
+		Mode:           mode,
+		OmniStatus:     "ONLINE",
+		SonarStatus:    "OFFLINE (degraded)",
+		Gates:          []string{"g1", "c1"},
+		PermissionMode: "acceptEdits",
 	})
 	for _, want := range []string{
 		"version " + ContractVersion,
-		"Mode: automatico | Combo: agent-auto",
-		"- do X", "- do Y",
+		"Mode: automatico | Combo: agent-auto | Gate: code | Permission: acceptEdits",
+		"GOVERNANCE CORE (invariant",
 		"QUALITY GATES (code):",
 		"- g1", "- c1",
 		"MANDATORY BEHAVIOR:",
@@ -123,16 +149,46 @@ func TestBuildContractIncludesModeAndGates(t *testing.T) {
 	}
 }
 
+// Decisión 2 (F1): las guardas de auxiliares dejaron de validarse por-modo y
+// ahora son INVARIANTES en governanceCore. Este test protege ese invariante.
+func TestGovernanceCoreContainsAuxiliaryGuards(t *testing.T) {
+	lower := strings.ToLower(governanceCore)
+	for _, guard := range []string{
+		"never delegate filesystem mutations",
+		"never delegate final verification",
+	} {
+		if !strings.Contains(lower, guard) {
+			t.Errorf("governanceCore no contiene la guarda invariante %q", guard)
+		}
+	}
+}
+
+func TestDerivePermissionModeFromCertification(t *testing.T) {
+	capabilities := ModelCapabilities{Models: map[string]ModelCapability{
+		"cx/agent": {Class: CapabilityAgent, ToolCall: true, LocalRead: true, LocalWrite: true},
+		"cx/aux":   {Class: CapabilityAuxiliary},
+	}}
+	combos := []ComboDefinition{
+		{Name: "certified", Models: []string{"cx/agent"}},
+		{Name: "auxiliary", Models: []string{"cx/aux"}},
+	}
+	if got := DerivePermissionMode(Mode{Combo: "certified"}, combos, capabilities); got != "acceptEdits" {
+		t.Errorf("combo certificado: got %q, want acceptEdits", got)
+	}
+	if got := DerivePermissionMode(Mode{Combo: "auxiliary"}, combos, capabilities); got != "default" {
+		t.Errorf("combo auxiliar: got %q, want default", got)
+	}
+	if got := DerivePermissionMode(Mode{Combo: "inexistente"}, combos, capabilities); got != "default" {
+		t.Errorf("combo ausente: got %q, want default (fail-closed)", got)
+	}
+}
+
 func TestValidateMutableModesRejectsAuxiliaryPrimary(t *testing.T) {
 	modes, err := LoadModes([]byte(`{
-		"schemaVersion": 1,
+		"schemaVersion": 2,
 		"defaultMode": "gpt",
 		"modes": {
-			"gpt": {
-				"combo": "gpt-only",
-				"permissionMode": "acceptEdits",
-				"auxiliaryCombos": ["gpt-web-auxiliary"]
-			}
+			"gpt": {"combo": "gpt-only", "auxiliaryCombos": ["gpt-web-auxiliary"]}
 		}
 	}`))
 	if err != nil {
@@ -141,12 +197,7 @@ func TestValidateMutableModesRejectsAuxiliaryPrimary(t *testing.T) {
 	capabilities, err := LoadModelCapabilities([]byte(`{
 		"schemaVersion": 1,
 		"models": {
-			"cgpt-web/gpt-5.5": {
-				"class": "auxiliary",
-				"toolCall": false,
-				"localRead": false,
-				"localWrite": false
-			}
+			"cgpt-web/gpt-5.5": {"class": "auxiliary", "toolCall": false, "localRead": false, "localWrite": false}
 		}
 	}`))
 	if err != nil {
@@ -168,11 +219,9 @@ func TestValidateMutableModesRejectsAuxiliaryPrimary(t *testing.T) {
 
 func TestValidateMutableModesFailsClosedForUnknownModel(t *testing.T) {
 	modes, err := LoadModes([]byte(`{
-		"schemaVersion": 1,
+		"schemaVersion": 2,
 		"defaultMode": "codigo",
-		"modes": {
-			"codigo": {"combo": "coding", "permissionMode": "acceptEdits"}
-		}
+		"modes": {"codigo": {"combo": "coding"}}
 	}`))
 	if err != nil {
 		t.Fatalf("LoadModes: %v", err)
@@ -190,26 +239,15 @@ func TestValidateMutableModesFailsClosedForUnknownModel(t *testing.T) {
 
 func TestValidateMutableModesAcceptsCertifiedAgent(t *testing.T) {
 	modes, err := LoadModes([]byte(`{
-		"schemaVersion": 1,
+		"schemaVersion": 2,
 		"defaultMode": "gpt",
-		"modes": {
-			"gpt": {
-				"combo": "gpt-agent",
-				"permissionMode": "acceptEdits",
-				"auxiliaryCombos": ["gpt-web-auxiliary"]
-			}
-		}
+		"modes": {"gpt": {"combo": "gpt-agent", "auxiliaryCombos": ["gpt-web-auxiliary"]}}
 	}`))
 	if err != nil {
 		t.Fatalf("LoadModes: %v", err)
 	}
 	capabilities := ModelCapabilities{Models: map[string]ModelCapability{
-		"cx/gpt-5.6-sol": {
-			Class:      CapabilityAgent,
-			ToolCall:   true,
-			LocalRead:  true,
-			LocalWrite: true,
-		},
+		"cx/gpt-5.6-sol": {Class: CapabilityAgent, ToolCall: true, LocalRead: true, LocalWrite: true},
 	}}
 
 	violations := ValidateMutableModes(modes, []ComboDefinition{{
@@ -218,38 +256,6 @@ func TestValidateMutableModesAcceptsCertifiedAgent(t *testing.T) {
 	}}, capabilities)
 
 	if len(violations) != 0 {
-		t.Fatalf("violations = %+v, want none", violations)
-	}
-}
-
-func TestValidateAuxiliaryPolicyRequiresMutationAndVerificationGuard(t *testing.T) {
-	mode := Mode{
-		Combo:           "gpt-agent",
-		PermissionMode:  "acceptEdits",
-		AuxiliaryCombos: []string{"gpt-web-auxiliary"},
-		Directives: []string{
-			"Use gpt-web-auxiliary for bounded read-only consultations",
-		},
-	}
-
-	violations := ValidateAuxiliaryPolicy("gpt", mode)
-	if len(violations) != 2 {
-		t.Fatalf("violations = %+v, want mutation and verification guards", violations)
-	}
-}
-
-func TestValidateAuxiliaryPolicyAcceptsExplicitGuards(t *testing.T) {
-	mode := Mode{
-		Combo:           "gpt-agent",
-		PermissionMode:  "acceptEdits",
-		AuxiliaryCombos: []string{"gpt-web-auxiliary"},
-		Directives: []string{
-			"Never delegate filesystem mutations to an auxiliary combo",
-			"Never delegate final verification to an auxiliary combo",
-		},
-	}
-
-	if violations := ValidateAuxiliaryPolicy("gpt", mode); len(violations) != 0 {
 		t.Fatalf("violations = %+v, want none", violations)
 	}
 }
@@ -272,9 +278,6 @@ func TestEmbeddedModesDefineSafeGPTOrchestration(t *testing.T) {
 	}
 	if got := strings.Join(mode.AuxiliaryCombos, ","); got != "gpt-web-auxiliary" {
 		t.Fatalf("gpt auxiliaries = %q", got)
-	}
-	if violations := ValidateAuxiliaryPolicy("gpt", mode); len(violations) != 0 {
-		t.Fatalf("gpt policy violations = %+v", violations)
 	}
 }
 
@@ -301,17 +304,11 @@ func TestEmbeddedModelCapabilitiesCertifyCodexAndRestrictWeb(t *testing.T) {
 	}
 }
 
-func TestValidateConfiguredModesCombinesCapabilityAndPolicyViolations(t *testing.T) {
+func TestValidateConfiguredModesReportsCapabilityViolations(t *testing.T) {
 	modes, err := LoadModes([]byte(`{
-		"schemaVersion": 1,
+		"schemaVersion": 2,
 		"defaultMode": "gpt",
-		"modes": {
-			"gpt": {
-				"combo": "gpt-web",
-				"permissionMode": "acceptEdits",
-				"auxiliaryCombos": ["gpt-web"]
-			}
-		}
+		"modes": {"gpt": {"combo": "gpt-web", "auxiliaryCombos": ["gpt-web"]}}
 	}`))
 	if err != nil {
 		t.Fatalf("LoadModes: %v", err)
@@ -324,8 +321,10 @@ func TestValidateConfiguredModesCombinesCapabilityAndPolicyViolations(t *testing
 		Name: "gpt-web", Models: []string{"cgpt-web/gpt-5.5"},
 	}}, capabilities)
 
-	if len(violations) != 3 {
-		t.Fatalf("violations = %+v, want capability plus two policy violations", violations)
+	// La política de auxiliares ya no se valida por-modo (invariante en
+	// governanceCore); solo queda la violación de capacidad del combo auxiliar.
+	if len(violations) != 1 {
+		t.Fatalf("violations = %+v, want 1 capability violation", violations)
 	}
 }
 
@@ -342,20 +341,18 @@ func TestFormatCapabilityViolationsIsDeterministic(t *testing.T) {
 
 func TestValidateSelectedModeIgnoresUnselectedUnregisteredModels(t *testing.T) {
 	modes, err := LoadModes([]byte(`{
-		"schemaVersion": 1,
+		"schemaVersion": 2,
 		"defaultMode": "gpt",
 		"modes": {
-			"gpt": {"combo": "gpt-agent", "permissionMode": "acceptEdits"},
-			"other": {"combo": "other-agent", "permissionMode": "acceptEdits"}
+			"gpt": {"combo": "gpt-agent", "capabilityGate": true},
+			"other": {"combo": "other-agent"}
 		}
 	}`))
 	if err != nil {
 		t.Fatalf("LoadModes: %v", err)
 	}
 	capabilities := ModelCapabilities{Models: map[string]ModelCapability{
-		"cx/gpt-5.6-sol": {
-			Class: CapabilityAgent, ToolCall: true, LocalRead: true, LocalWrite: true,
-		},
+		"cx/gpt-5.6-sol": {Class: CapabilityAgent, ToolCall: true, LocalRead: true, LocalWrite: true},
 	}}
 	combos := []ComboDefinition{
 		{Name: "gpt-agent", Models: []string{"cx/gpt-5.6-sol"}},
@@ -373,9 +370,9 @@ func TestValidateSelectedModeIgnoresUnselectedUnregisteredModels(t *testing.T) {
 
 func TestValidateSelectedModeRejectsUnknownMode(t *testing.T) {
 	modes, err := LoadModes([]byte(`{
-		"schemaVersion": 1,
+		"schemaVersion": 2,
 		"defaultMode": "gpt",
-		"modes": {"gpt": {"combo": "gpt-agent", "permissionMode": "acceptEdits"}}
+		"modes": {"gpt": {"combo": "gpt-agent"}}
 	}`))
 	if err != nil {
 		t.Fatalf("LoadModes: %v", err)
@@ -388,14 +385,9 @@ func TestValidateSelectedModeRejectsUnknownMode(t *testing.T) {
 
 func TestValidateSelectedModeSkipsCapabilityGateWhenModeDoesNotOptIn(t *testing.T) {
 	modes, err := LoadModes([]byte(`{
-		"schemaVersion": 1,
+		"schemaVersion": 2,
 		"defaultMode": "automatico",
-		"modes": {
-			"automatico": {
-				"combo": "agent-auto",
-				"permissionMode": "acceptEdits"
-			}
-		}
+		"modes": {"automatico": {"combo": "agent-auto"}}
 	}`))
 	if err != nil {
 		t.Fatalf("LoadModes: %v", err)

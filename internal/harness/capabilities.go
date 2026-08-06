@@ -58,8 +58,44 @@ type CapabilityViolation struct {
 	Reason string
 }
 
-// ValidateMutableModes falla de forma cerrada: cada modelo de un combo primario con
-// autoridad de edición debe estar registrado y completamente certificado como agent.
+// comboCertified indica si TODOS los modelos de un combo están certificados como
+// agent con escritura local. Fail-closed: combo ausente/vacío o modelo sin
+// registro cuenta como NO certificado.
+func comboCertified(combo ComboDefinition, capabilities ModelCapabilities) bool {
+	if len(combo.Models) == 0 {
+		return false
+	}
+	for _, model := range combo.Models {
+		capability, ok := capabilities.Models[model]
+		if !ok {
+			return false
+		}
+		if capability.Class != CapabilityAgent || !capability.ToolCall || !capability.LocalRead || !capability.LocalWrite {
+			return false
+		}
+	}
+	return true
+}
+
+// DerivePermissionMode (F1/1B) deriva el permission-mode de la certificación del
+// combo primario: certificado -> "acceptEdits"; no certificado -> "default"
+// (supervisado). El modo ya no lo declara; el harness lo decide de forma
+// determinista, preservando la guarda de seguridad sin bloquear modos supervisados.
+func DerivePermissionMode(mode Mode, combos []ComboDefinition, capabilities ModelCapabilities) string {
+	combosByName := make(map[string]ComboDefinition, len(combos))
+	for _, combo := range combos {
+		combosByName[combo.Name] = combo
+	}
+	if comboCertified(combosByName[mode.Combo], capabilities) {
+		return "acceptEdits"
+	}
+	return "default"
+}
+
+// ValidateMutableModes falla de forma cerrada: cada modelo del combo primario de
+// un modo debe estar registrado y completamente certificado como agent. En runtime
+// solo se invoca sobre el modo con capabilityGate (ver ValidateSelectedMode): un
+// modo que EXIGE certificación pero cuyo combo no la tiene se rechaza.
 func ValidateMutableModes(modes *Modes, combos []ComboDefinition, capabilities ModelCapabilities) []CapabilityViolation {
 	combosByName := make(map[string]ComboDefinition, len(combos))
 	for _, combo := range combos {
@@ -68,9 +104,6 @@ func ValidateMutableModes(modes *Modes, combos []ComboDefinition, capabilities M
 
 	var violations []CapabilityViolation
 	for modeName, mode := range modes.Modes {
-		if mode.PermissionMode != "acceptEdits" {
-			continue
-		}
 		combo, ok := combosByName[mode.Combo]
 		if !ok {
 			violations = append(violations, CapabilityViolation{
@@ -104,41 +137,11 @@ func ValidateMutableModes(modes *Modes, combos []ComboDefinition, capabilities M
 	return violations
 }
 
-// ValidateAuxiliaryPolicy comprueba que un modo mutable que consulta auxiliares
-// conserve explícitamente la mutación y la verificación final en el agente principal.
-func ValidateAuxiliaryPolicy(modeName string, mode Mode) []CapabilityViolation {
-	if mode.PermissionMode != "acceptEdits" || len(mode.AuxiliaryCombos) == 0 {
-		return nil
-	}
-
-	directives := strings.ToLower(strings.Join(mode.Directives, "\n"))
-	checks := []struct {
-		needle string
-		reason string
-	}{
-		{needle: "filesystem mutations", reason: "auxiliary mutation guard is missing"},
-		{needle: "final verification", reason: "auxiliary final-verification guard is missing"},
-	}
-
-	var violations []CapabilityViolation
-	for _, check := range checks {
-		if !strings.Contains(directives, "never delegate "+check.needle) {
-			violations = append(violations, CapabilityViolation{
-				Mode: modeName, Combo: mode.Combo, Reason: check.reason,
-			})
-		}
-	}
-	return violations
-}
-
-// ValidateConfiguredModes combina las reglas de capacidad y delegación en un único gate.
+// ValidateConfiguredModes aplica la regla de capacidad. La política de auxiliares
+// (nunca delegar mutaciones/verificación final) ya NO se valida por-modo: es
+// invariante y vive en governanceCore (F1/Decisión 2), verificada por test.
 func ValidateConfiguredModes(modes *Modes, combos []ComboDefinition, capabilities ModelCapabilities) []CapabilityViolation {
-	violations := ValidateMutableModes(modes, combos, capabilities)
-	for modeName, mode := range modes.Modes {
-		violations = append(violations, ValidateAuxiliaryPolicy(modeName, mode)...)
-	}
-	sortCapabilityViolations(violations)
-	return violations
+	return ValidateMutableModes(modes, combos, capabilities)
 }
 
 // ValidateSelectedMode aplica el gate al modo que se va a ejecutar. Otros modos

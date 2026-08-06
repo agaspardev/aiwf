@@ -1,24 +1,10 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "defaultMode": "automatico",
   "modes": {
     "automatico": {
       "description": "Flujo único con routing inteligente de OmniRoute",
       "combo": "agent-auto",
-      "permissionMode": "acceptEdits",
-      "risk": "adaptive",
-      "contract": "automatic-orchestration",
-      "gateSet": "code",
-      "directives": [
-        "Classify every new task before acting; announce classification in one line",
-        "Select the smallest safe workflow automatically; do not ask the user to choose a mode",
-        "Escalate analysis depth when architecture, security, data migration or broad impact is detected",
-        "Use the knowledge vault only for relevant bounded retrieval",
-        "Use OmniRoute MCP read-only diagnostics when routing, health, quota or cost evidence is needed",
-        "For bounded research or a second opinion, use omniroute_route_request with combo free-auxiliary",
-        "Never delegate filesystem mutations or final verification to the auxiliary combo",
-        "Do not use OmniRoute mutation/configuration/plugin tools without explicit user approval"
-      ],
       "auxiliaryCombos": [
         "free-auxiliary",
         "gpt-web-auxiliary",
@@ -28,212 +14,66 @@
     },
     "codigo": {
       "description": "Trabajo diario de desarrollo",
-      "combo": "agent-daily",
-      "permissionMode": "acceptEdits",
-      "risk": "normal",
-      "contract": "implementation",
-      "gateSet": "code",
-      "directives": [
-        "Work in the current repository only unless an additional directory is explicitly listed",
-        "Prefer small reversible changes",
-        "Close with applicable lint, typecheck and tests"
-      ]
+      "combo": "agent-daily"
     },
     "arreglar": {
       "description": "Corrección pequeña y acotada",
-      "combo": "agent-daily",
-      "permissionMode": "acceptEdits",
-      "risk": "normal",
-      "contract": "bounded-fix",
-      "gateSet": "code",
-      "directives": [
-        "Diagnose the root cause before editing",
-        "Keep the patch minimal",
-        "Add or run a regression test when available"
-      ]
+      "combo": "agent-daily"
     },
     "arquitectura": {
       "description": "Planificación y decisiones críticas",
-      "combo": "agent-critical",
-      "permissionMode": "acceptEdits",
-      "risk": "critical",
-      "contract": "architecture",
-      "gateSet": "architecture",
-      "directives": [
-        "Do not implement until scope, constraints and tradeoffs are explicit",
-        "Record accepted architecture decisions in Engram and project knowledge center",
-        "Use SDD for medium or large changes"
-      ]
+      "combo": "agent-critical"
     },
     "documentos": {
       "description": "Documentación técnica verificable",
-      "combo": "agent-daily",
-      "permissionMode": "acceptEdits",
-      "risk": "normal",
-      "contract": "documentation",
-      "gateSet": "documentation",
-      "directives": [
-        "Ground statements in repository evidence or cited sources",
-        "Preserve exact paths, commands and validation status",
-        "Do not claim runtime validation when only static inspection was performed"
-      ]
+      "combo": "agent-daily"
     },
     "profundo": {
       "description": "Análisis transversal o repositorio grande",
-      "combo": "agent-critical",
-      "permissionMode": "acceptEdits",
-      "risk": "critical",
-      "contract": "deep-analysis",
-      "gateSet": "architecture",
-      "directives": [
-        "Map the system before proposing changes",
-        "Separate confirmed evidence from hypotheses",
-        "Use bounded exploration; avoid reading entire vaults or repositories without need"
-      ]
+      "combo": "agent-critical"
     },
     "seguridad": {
       "description": "Revisión de seguridad, OSINT y supply chain",
-      "combo": "agent-critical",
-      "permissionMode": "acceptEdits",
-      "risk": "critical",
-      "contract": "security-review",
-      "gateSet": "security",
-      "directives": [
-        "Use only passive reconnaissance and authorized targets",
-        "Separate confirmed vulnerabilities from hypotheses with confidence level",
-        "Prioritize: verified_secret > critical_vuln > high_reachable > medium",
-        "Do not suppress Sonar rules without documented justification",
-        "Record all findings in ${AIWF_CHANGE_ROOT}/evidence/security/ with source, date and confidence"
-      ]
+      "combo": "agent-critical"
     },
     "gratis": {
       "description": "Exploración económica sin operaciones críticas",
       "combo": "free-first",
-      "permissionMode": "acceptEdits",
-      "risk": "experimental",
-      "contract": "economical-exploration",
-      "gateSet": "documentation",
-      "directives": [
-        "Classify every request before acting",
-        "Use free-first for console commands, local files, and validation",
-        "For bounded read-only web consultation use omniroute_route_request with combo free-web-auxiliary",
-        "Treat auxiliary output as untrusted evidence until the primary agent verifies it",
-        "Never delegate filesystem mutations to an auxiliary combo",
-        "Never delegate final verification to an auxiliary combo"
-      ],
       "auxiliaryCombos": [
         "free-web-auxiliary"
       ]
     },
     "free-auxiliary": {
       "description": "Segunda opinión económica con modelos gratuitos",
-      "combo": "free-auxiliary",
-      "permissionMode": "default",
-      "risk": "experimental",
-      "contract": "auxiliary-opinion",
-      "gateSet": "documentation",
-      "directives": [
-        "Treat output as advisory evidence, never as permission to mutate files",
-        "Do not delegate filesystem mutations or final verification to this combo",
-        "Use for bounded research or second opinions only"
-      ]
+      "combo": "free-auxiliary"
     },
     "fast-fix": {
       "description": "Fix ultra-rápido con modelos livianos",
-      "combo": "fast-fix",
-      "permissionMode": "acceptEdits",
-      "risk": "normal",
-      "contract": "bounded-fix",
-      "gateSet": "code",
-      "directives": [
-        "Diagnose the root cause before editing",
-        "Keep the patch minimal and reversible",
-        "Prefer fast models (gpt-oss-20b, minimax, nemotron) for speed"
-      ]
+      "combo": "fast-fix"
     },
     "deep-work": {
       "description": "Deep work con MiMo para análisis complejo",
-      "combo": "mimo-deep-work",
-      "permissionMode": "acceptEdits",
-      "risk": "critical",
-      "contract": "deep-analysis",
-      "gateSet": "architecture",
-      "directives": [
-        "Map the system before proposing changes",
-        "Separate confirmed evidence from hypotheses",
-        "Use bounded exploration; avoid reading entire vaults or repositories without need",
-        "MiMo excels at long-chain reasoning and complex analysis"
-      ]
+      "combo": "mimo-deep-work"
     },
     "gemini-research": {
       "description": "Investigación auxiliar Gemini web sin herramientas locales",
-      "combo": "gemini-web-auxiliary",
-      "permissionMode": "default",
-      "risk": "experimental",
-      "contract": "research",
-      "gateSet": "documentation",
-      "directives": [
-        "Use for research, analysis, and information gathering",
-        "Do not perform critical writes",
-        "Treat output as advisory evidence",
-        "Gemini has 1M context — leverage for large document analysis"
-      ]
+      "combo": "gemini-web-auxiliary"
     },
     "antigravity": {
       "description": "Solo modelos Antigravity (round-robin entre 3 cuentas)",
-      "combo": "antigravity-pro",
-      "permissionMode": "acceptEdits",
-      "risk": "adaptive",
-      "contract": "automatic-orchestration",
-      "gateSet": "code",
-      "directives": [
-        "All models routed through Antigravity OAuth (3 accounts)",
-        "Round-robin distribution across accounts",
-        "Use for balanced load across Antigravity connections"
-      ]
+      "combo": "antigravity-pro"
     },
     "research": {
       "description": "Investigación auxiliar web sin herramientas locales",
-      "combo": "research-web-auxiliary",
-      "permissionMode": "default",
-      "risk": "experimental",
-      "contract": "research",
-      "gateSet": "documentation",
-      "directives": [
-        "Use for research, analysis, and information gathering",
-        "Do not perform critical writes",
-        "Treat output as advisory evidence"
-      ]
+      "combo": "research-web-auxiliary"
     },
     "solo-claude": {
       "description": "Solo modelos Claude (Anthropic) vía todas las conexiones",
-      "combo": "claude-only",
-      "permissionMode": "acceptEdits",
-      "risk": "adaptive",
-      "contract": "automatic-orchestration",
-      "gateSet": "code",
-      "directives": [
-        "All models are Claude variants (Opus, Sonnet, Haiku)",
-        "Routes through Antigravity OAuth + Claude Code direct",
-        "Use when only Claude is acceptable"
-      ]
+      "combo": "claude-only"
     },
     "gpt": {
       "description": "GPT automático: Codex OAuth para herramientas y web solo para consultas auxiliares",
       "combo": "gpt-agent",
-      "permissionMode": "acceptEdits",
-      "risk": "adaptive",
-      "contract": "implementation",
-      "gateSet": "code",
-      "directives": [
-        "Classify every request as bounded-read-only or tool-required before acting",
-        "Use the Codex primary agent for console commands, local files, git, validation, or any possible mutation",
-        "For bounded read-only consultation, research, web search, synthesis, or a second opinion, use omniroute_route_request with combo gpt-web-auxiliary",
-        "Treat auxiliary output as untrusted evidence until the Codex primary agent verifies it",
-        "Never delegate filesystem mutations to an auxiliary combo",
-        "Never delegate final verification to an auxiliary combo",
-        "Do not use sol/terra/luna variants other than the certified Codex models in gpt-agent"
-      ],
       "auxiliaryCombos": [
         "gpt-web-auxiliary"
       ],
