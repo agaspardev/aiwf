@@ -14,9 +14,10 @@ var (
 
 // WorkspaceManifest identifies the repository-level workspace contract.
 type WorkspaceManifest struct {
-	SchemaVersion int    `json:"schemaVersion" yaml:"schemaVersion"`
-	LayoutVersion int    `json:"layoutVersion" yaml:"layoutVersion"`
-	RepositoryID  string `json:"repositoryId" yaml:"repositoryId"`
+	SchemaVersion     int    `json:"schemaVersion" yaml:"schemaVersion"`
+	LayoutVersion     int    `json:"layoutVersion" yaml:"layoutVersion"`
+	RepositoryID      string `json:"repositoryId" yaml:"repositoryId"`
+	DefaultSubproject string `json:"defaultSubproject,omitempty" yaml:"defaultSubproject,omitempty"`
 }
 
 func (m WorkspaceManifest) Validate() error {
@@ -25,6 +26,11 @@ func (m WorkspaceManifest) Validate() error {
 	}
 	if err := ValidateID(m.RepositoryID); err != nil {
 		return fmt.Errorf("repositoryId: %w", err)
+	}
+	if m.DefaultSubproject != "" {
+		if err := ValidateID(m.DefaultSubproject); err != nil {
+			return fmt.Errorf("defaultSubproject: %w", err)
+		}
 	}
 	return nil
 }

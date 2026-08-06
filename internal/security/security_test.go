@@ -110,3 +110,28 @@ func TestSecurityToolsEmitSARIF(t *testing.T) {
 		}
 	}
 }
+
+func TestDockerSemgrepArgsMountsAndUsesSarif(t *testing.T) {
+	args := dockerSemgrepArgs("/repo", "/repo/.ai-workflow/ev/semgrep.sarif", ".")
+	joined := strings.Join(args, " ")
+	for _, want := range []string{"run --rm", "-v /repo:/src", "-w /src", "semgrep/semgrep", "--sarif", "/src/.ai-workflow/ev/semgrep.sarif"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("args docker no contienen %q\n got: %s", want, joined)
+		}
+	}
+}
+
+func TestSastFallsBackToDockerWhenSemgrepAbsent(t *testing.T) {
+	// semgrep ausente, docker presente -> RunCmd recibe "docker".
+	r := newTestRunner(t, map[string]bool{"docker": true}, map[string]int{"docker": 0})
+	var gotName string
+	inner := r.RunCmd
+	r.RunCmd = func(name string, a ...string) int { gotName = name; return inner(name, a...) }
+	res := r.Sast()
+	if gotName != "docker" {
+		t.Errorf("esperaba invocación via docker, got %q", gotName)
+	}
+	if res.Status == "SKIP" {
+		t.Error("con docker presente no debería SKIP")
+	}
+}

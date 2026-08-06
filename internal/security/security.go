@@ -121,11 +121,19 @@ func (r *Runner) Secrets() ToolResult {
 
 // Sast — Semgrep. 0=OK, 1=WARN (findings), otro=ERROR.
 func (r *Runner) Sast() ToolResult {
-	if !r.has("semgrep") {
-		return skip("Semgrep", "no instalado (P2 — pip install semgrep)")
-	}
 	out := r.reportPath("semgrep", "sarif")
-	code := r.RunCmd("semgrep", "scan", "--config", "p/default", "--sarif", "-o", out, r.Target)
+	var code int
+	switch {
+	case r.has("semgrep"):
+		code = r.RunCmd("semgrep", "scan", "--config", "p/default", "--sarif", "-o", out, r.Target)
+	case r.has("docker"):
+		// semgrep no tiene soporte nativo en Windows: si hay Docker, corre el
+		// contenedor oficial (Linux) montando el workdir. Mismo SARIF de salida.
+		wd, _ := os.Getwd()
+		code = r.RunCmd("docker", dockerSemgrepArgs(wd, out, r.Target)...)
+	default:
+		return skip("Semgrep", "no instalado (ni nativo ni docker) — P2")
+	}
 	status := r.policy().ClassifyByExitCode("semgrep", code)
 	if code != 0 && code != 1 {
 		status = "ERROR"
@@ -239,5 +247,25 @@ func ExitCode(results []ToolResult) int {
 		return 2
 	default:
 		return 0
+	}
+}
+
+// dockerSemgrepArgs construye la invocación de semgrep vía el contenedor oficial
+// (Linux), montando workdir en /src. Puro y determinista (testeable). El SARIF de
+// salida y el target se expresan relativos a /src. Windows: docker traduce la ruta.
+func dockerSemgrepArgs(workdir, out, target string) []string {
+	rel := func(p string) string {
+		if r, err := filepath.Rel(workdir, p); err == nil {
+			return "/src/" + filepath.ToSlash(r)
+		}
+		return "/src/" + filepath.ToSlash(p)
+	}
+	return []string{
+		"run", "--rm",
+		"-v", workdir + ":/src",
+		"-w", "/src",
+		"semgrep/semgrep",
+		"semgrep", "scan", "--config", "p/default", "--sarif",
+		"-o", rel(out), rel(target),
 	}
 }

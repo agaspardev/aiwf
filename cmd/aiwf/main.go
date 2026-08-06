@@ -68,7 +68,7 @@ func main() {
 	}
 }
 
-// parseRunArgs extrae el subproyecto obligatorio y banderas de sesión.
+// parseRunArgs extrae el subproyecto opcional y banderas de sesión.
 func parseRunArgs(args []string) (subproject string, dryRun, skipPerms bool, err error) {
 	for _, arg := range args {
 		switch arg {
@@ -81,13 +81,10 @@ func parseRunArgs(args []string) (subproject string, dryRun, skipPerms bool, err
 				return "", false, false, fmt.Errorf("bandera de sesión desconocida: %s", arg)
 			}
 			if subproject != "" {
-				return "", false, false, fmt.Errorf("uso: aiwf <modo> <subproject> [--dry-run] [--skip-perms]")
+				return "", false, false, fmt.Errorf("uso: aiwf <modo> [subproject] [--dry-run] [--skip-perms]")
 			}
 			subproject = arg
 		}
-	}
-	if subproject == "" {
-		return "", false, false, fmt.Errorf("falta subproject: uso aiwf <modo> <subproject>")
 	}
 	return subproject, dryRun, skipPerms, nil
 }
@@ -103,12 +100,15 @@ Instalación:
 
 Sesiones (modos de trabajo):
   aiwf                 Abre una sesión en el modo por defecto
-  aiwf <modo> <subproject>          Abre una sesión aislada por subproyecto
+  aiwf <modo> [subproject]          Abre una sesión aislada por subproyecto.
+                                    Sin subproject usa el default persistido
+                                    (base/personalizado; la primera vez pregunta).
+                                    Si el subproject no existe, confirma antes de crear.
                                     (automatico, codigo, arreglar, arquitectura,
                                      documentos, profundo, seguridad, gratis, gpt,
                                      fast-fix, deep-work, research y auxiliares)
-  aiwf <modo> <subproject> --dry-run     Muestra argumentos y contract sin lanzar
-  aiwf <modo> <subproject> --skip-perms  Usa --dangerously-skip-permissions
+  aiwf <modo> [subproject] --dry-run     Muestra argumentos y contract sin lanzar
+  aiwf <modo> [subproject] --skip-perms  Usa --dangerously-skip-permissions
 
 Herramientas:
   aiwf init [--name N] [--force]   Inicializa control plane mínimo .ai-workflow/

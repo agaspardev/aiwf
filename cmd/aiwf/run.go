@@ -82,6 +82,11 @@ func runMode(modeName, subproject string, dryRun, skipPerms bool) int {
 		fmt.Fprintf(os.Stderr, "error: %v\n", cwdErr)
 		return 1
 	}
+	subproject, subErr := resolveSessionSubproject(repositoryRoot, subproject)
+	if subErr != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", subErr)
+		return 2
+	}
 	paths, pathErr := workspace.NewPaths(repositoryRoot, subproject, "")
 	if pathErr != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", pathErr)
