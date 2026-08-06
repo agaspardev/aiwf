@@ -50,6 +50,12 @@ func LoadReport(path string) (Report, error) {
 
 // Finalize removes verified sources. It is intentionally separate from Apply.
 func Finalize(root string, plan Plan) error {
+	lock, err := acquireLock(root)
+	if err != nil {
+		return err
+	}
+	defer releaseLock(lock)
+
 	if err := Verify(root, plan); err != nil {
 		return err
 	}

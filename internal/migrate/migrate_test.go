@@ -138,6 +138,67 @@ func assertRolledBack(t *testing.T, root string, operation Operation) {
 	}
 }
 
+func TestApplyLeavesNoTemporaryFiles(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, ".ai-workflow", "changes", "legacy-change", "proposal.md"), "legacy")
+	plan, err := BuildPlan(root, "aiwf-core")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Apply(root, plan); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(root, filepath.FromSlash(plan.Operations[0].Target))
+	if _, err := os.Stat(target); err != nil {
+		t.Fatalf("target missing: %v", err)
+	}
+	if _, err := os.Stat(target + ".tmp"); !os.IsNotExist(err) {
+		t.Fatalf("temporary file left behind: %v", err)
+	}
+}
+
+func TestApplyFailsWhenLockHeld(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, ".ai-workflow", "changes", "legacy-change", "proposal.md"), "legacy")
+	plan, err := BuildPlan(root, "aiwf-core")
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock, err := acquireLock(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer releaseLock(lock)
+
+	if _, err := Apply(root, plan); err == nil {
+		t.Fatal("Apply must fail when migration lock is held")
+	}
+}
+
+func TestRollbackCleansInterruptedTemp(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, ".ai-workflow", "changes", "legacy-change", "proposal.md"), "legacy")
+	plan, err := BuildPlan(root, "aiwf-core")
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := Apply(root, plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Simula un Apply interrumpido que dejó un .tmp huérfano en el target.
+	target := filepath.Join(root, filepath.FromSlash(report.Copied[0].Target))
+	write(t, target+".tmp", "leftover")
+
+	if err := Rollback(root, report); err != nil {
+		t.Fatalf("Rollback: %v", err)
+	}
+	if _, err := os.Stat(target + ".tmp"); !os.IsNotExist(err) {
+		t.Fatalf("rollback did not clean interrupted temp: %v", err)
+	}
+	assertRolledBack(t, root, report.Copied[0])
+}
+
 func treeDigest(t *testing.T, root string) string {
 	t.Helper()
 	hash := sha256.New()

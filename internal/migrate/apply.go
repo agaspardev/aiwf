@@ -7,8 +7,37 @@ import (
 	"time"
 )
 
+// acquireLock impone exclusividad inter-proceso para evitar migraciones concurrentes.
+func acquireLock(root string) (*os.File, error) {
+	lockPath := filepath.Join(root, ".ai-workflow", "migrations", "MIGRATION.lock")
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
+		return nil, err
+	}
+	// O_EXCL crea el archivo solo si no existe; es atómico en SO.
+	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("migración ya en progreso (lock existente): %w", err)
+	}
+	return f, nil
+}
+
+func releaseLock(f *os.File) {
+	if f != nil {
+		name := f.Name()
+		f.Close()
+		// Close antes de Remove: en Windows un handle abierto bloquea el borrado.
+		os.Remove(name)
+	}
+}
+
 // Apply copies deterministic operations. Sources remain intact until explicit finalize.
 func Apply(root string, plan Plan) (Report, error) {
+	lock, err := acquireLock(root)
+	if err != nil {
+		return Report{}, err
+	}
+	defer releaseLock(lock)
+
 	if len(plan.Ambiguities) > 0 {
 		return Report{}, fmt.Errorf("plan has %d unresolved ambiguities", len(plan.Ambiguities))
 	}
@@ -44,7 +73,12 @@ func Apply(root string, plan Plan) (Report, error) {
 		if err != nil {
 			return report, err
 		}
-		if err := os.WriteFile(target, data, 0o644); err != nil {
+		tmpTarget := target + ".tmp"
+		if err := os.WriteFile(tmpTarget, data, 0o644); err != nil {
+			return report, err
+		}
+		if err := os.Rename(tmpTarget, target); err != nil {
+			os.Remove(tmpTarget)
 			return report, err
 		}
 		report.Copied = append(report.Copied, operation)
@@ -99,6 +133,12 @@ func Verify(root string, plan Plan) error {
 
 // Rollback removes unmodified copies and restores finalized sources when needed.
 func Rollback(root string, report Report) error {
+	lock, err := acquireLock(root)
+	if err != nil {
+		return err
+	}
+	defer releaseLock(lock)
+
 	for i := len(report.Copied) - 1; i >= 0; i-- {
 		operation := report.Copied[i]
 		source, target, err := validateOperation(root, operation)
@@ -131,6 +171,8 @@ func Rollback(root string, report Report) error {
 		if err := os.Remove(target); err != nil {
 			return err
 		}
+		// Limpia un posible .tmp interrumpido de un Apply previo.
+		os.Remove(target + ".tmp")
 		removeEmptyParents(filepath.Dir(target), filepath.Join(root, ".ai-workflow"))
 	}
 	return nil
