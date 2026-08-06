@@ -93,3 +93,20 @@ func TestParseScope(t *testing.T) {
 		t.Error("scope inválido debería error")
 	}
 }
+
+func TestSecurityToolsEmitSARIF(t *testing.T) {
+	r := newTestRunner(t,
+		map[string]bool{"gitleaks": true, "semgrep": true, "trivy": true, "osv-scanner": true},
+		map[string]int{"gitleaks": 0, "semgrep": 0, "trivy": 0, "osv-scanner": 0})
+	if got := r.Secrets().Report; !strings.HasSuffix(got, ".sarif") {
+		t.Errorf("gitleaks report = %q, esperaba .sarif", got)
+	}
+	if got := r.Sast().Report; !strings.HasSuffix(got, ".sarif") {
+		t.Errorf("semgrep report = %q, esperaba .sarif", got)
+	}
+	for _, res := range r.Sca() {
+		if !strings.HasSuffix(res.Report, ".sarif") {
+			t.Errorf("%s report = %q, esperaba .sarif", res.Tool, res.Report)
+		}
+	}
+}

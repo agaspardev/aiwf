@@ -111,8 +111,8 @@ func (r *Runner) Secrets() ToolResult {
 	if !r.has("gitleaks") {
 		return skip("Gitleaks", "no instalado (P1 — winget install gitleaks)")
 	}
-	out := r.reportPath("gitleaks", "json")
-	code := r.RunCmd("gitleaks", "git", "--redact", "--report-format", "json", "--report-path", out)
+	out := r.reportPath("gitleaks", "sarif")
+	code := r.RunCmd("gitleaks", "git", "--redact", "--report-format", "sarif", "--report-path", out)
 	return ToolResult{
 		Tool: "Gitleaks", Report: out, ExitCode: code,
 		Status: r.policy().ClassifyByExitCode("gitleaks", code),
@@ -124,8 +124,8 @@ func (r *Runner) Sast() ToolResult {
 	if !r.has("semgrep") {
 		return skip("Semgrep", "no instalado (P2 — pip install semgrep)")
 	}
-	out := r.reportPath("semgrep", "json")
-	code := r.RunCmd("semgrep", "scan", "--config", "p/default", "--json", "-o", out, r.Target)
+	out := r.reportPath("semgrep", "sarif")
+	code := r.RunCmd("semgrep", "scan", "--config", "p/default", "--sarif", "-o", out, r.Target)
 	status := r.policy().ClassifyByExitCode("semgrep", code)
 	if code != 0 && code != 1 {
 		status = "ERROR"
@@ -149,8 +149,8 @@ func (r *Runner) Sca() []ToolResult {
 	if !r.has("trivy") {
 		res = append(res, skip("Trivy", "no instalado (P2 — winget install Aqua.Trivy)"))
 	} else {
-		out := r.reportPath("trivy", "json")
-		code := r.RunCmd("trivy", "fs", "--scanners", "vuln,misconfig,secret", "--format", "json", "--output", out, r.Target)
+		out := r.reportPath("trivy", "sarif")
+		code := r.RunCmd("trivy", "fs", "--scanners", "vuln,misconfig,secret", "--format", "sarif", "--output", out, r.Target)
 		res = append(res, ToolResult{
 			Tool: "Trivy", Report: out, ExitCode: code,
 			Status: r.policy().ClassifyByExitCode("trivy", code),
